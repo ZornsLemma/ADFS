@@ -700,10 +700,7 @@ ELSE
 ;; Read result from SCSI and return it as a result
 ;; -----------------------------------------------
 .L825D 
-IF PATCH_IDE OR PATCH_SD
-ELSE
        JSR L807E        ;; Set SCSI to command mode
-ENDIF
        LDA #&03
        TAX
        TAY
