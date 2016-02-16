@@ -5038,7 +5038,6 @@ ELSE
        PLA
        STA &C317        ;; Restore current drive
        RTS
-ENDIF
 ;;
 .LA12A EQUB &00
        EQUB &00         ;; ;; &FFFFC900
@@ -5051,6 +5050,7 @@ ENDIF
        EQUB &00
        EQUB &00         ;; ;; Zero sector
        EQUB &00
+ENDIF
 ;;
 .LA135 JSR LA50D
        LDY &C317
@@ -5107,9 +5107,11 @@ ENDIF
 .LA19E JSR LA135        ;; Scan drive number parameter
 .LA1A1 LDA &C26F        ;; Get drive
        STA &C317        ;; Set current drive
+IF NOT(PATCH_SD)
        LDX #<LA1DF
        LDY #>LA1DF
        JSR L80A2        ;; Do SCSI command &1B - Park
+ENDIF
        LDA #<(LA2EB-1)
        STA &B4
        LDA #>(LA2EB-1)
@@ -5130,6 +5132,7 @@ ENDIF
        LDX #&0A
        BRA LA189        ;; Set library name to "Unset"
 ;;
+IF NOT(PATCH_SD)
 .LA1DF EQUB &00         ;; ;; Flag = &00
        EQUB &00         ;; ;; &FFFFC900
        EQUB &C9
@@ -5141,6 +5144,7 @@ ENDIF
        EQUB &00
        EQUB &01         ;; ;; 1 sector
        EQUB &00
+ENDIF
 ;;
 .LA1EA
        LDX #&03
