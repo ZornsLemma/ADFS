@@ -7003,8 +7003,7 @@ ENDIF
 .LB0EC STX &C3          ;; Save X
        PHA              ;; Save output byte
        JSR LAD0D        ;; Check channel and get flags
-       LDY #&00
-       STY &C2CF
+       STZ &C2CF
        TAY
        BMI LB112
 .LB0FA JSR L836B
