@@ -198,6 +198,12 @@ ENDIF
        STX &B0
        STY &B1          ;; &B0/1=>control block
        JSR LA6FD        ;; Check if directory loaded
+;;
+;; The SD driver either succeeds or fails, so we don't need any retry logic. We
+;; just fall straight through to L80DF where we make our one attempt at the
+;; operation.
+;;
+IF NOT(PATCH_SD)
        LDY #&05
        LDA (&B0),Y      ;; Get Command
        CMP #&2F         ;; Verify?
@@ -212,10 +218,6 @@ ENDIF
 ;;
 .L80BD JSR L80DF        ;; Do the specified command
        BEQ L8098        ;; Exit if ok
-;;
-;; The SD driver never returns 'not ready'
-;;
-IF NOT(PATCH_SD)
        CMP #&04         ;; Not ready?
        BNE L80D7        ;; Jump if result<>Not ready
 ;;                                         If Drive not ready, pause a bit
@@ -228,15 +230,12 @@ IF NOT(PATCH_SD)
        BNE L80C8        ;; Loop 256 times with X
        DEY
        BNE L80C8        ;; Loop 25 times with Y
-ENDIF
-;;
-;; TODO: It may be the SD driver can never return 'write protected' either
-;;
 .L80D7 CMP #&40         ;; Result=Write protected?
        BEQ L80DF        ;; Abort immediately
        DEC &CE          ;; Dec number of retries
        BPL L80BD        ;; Jump to try again
 ;;                                         Drop through to try once more
+ENDIF
 ;;
 ;; Try to access a drive
 ;; ---------------------
@@ -4741,6 +4740,27 @@ ENDIF
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
 
+.chunk_10
+       LDA #&FF
+       STA &C22E
+       STA &C22F
+       RTS
+
+.chunk_12
+       LDA &C317
+       JMP LB5C5        ;; X=(A DIV 16)
+
+.chunk_13
+       ORA &0D5C
+       STA &FE28        ;; FDC Status/Command
+       RTS
+
+.chunk_14
+       LDY #&06
+       LDA (&B0),Y      ;; Get drive
+       ORA &C317        ;; OR with current drive
+       RTS
+
 .chunk_15
        INX
        INY
@@ -8891,27 +8911,6 @@ ENDIF
        LDA &B5
        STA &C241
        JMP lda_40_sta_b8_lda_c2_sta_b9
-
-.chunk_10
-       LDA #&FF
-       STA &C22E
-       STA &C22F
-       RTS
-
-.chunk_12
-       LDA &C317
-       JMP LB5C5        ;; X=(A DIV 16)
-
-.chunk_13
-       ORA &0D5C
-       STA &FE28        ;; FDC Status/Command
-       RTS
-
-.chunk_14
-       LDY #&06
-       LDA (&B0),Y      ;; Get drive
-       ORA &C317        ;; OR with current drive
-       RTS
 
 .chunk_40
        LDA (&B6),Y
