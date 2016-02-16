@@ -1815,6 +1815,9 @@ ENDIF
        ADC &C21D        ;; Sector=Sector+&FF
        STA &C21D        ;; Sector0=Sector0+&FF
        BCC L8AA4        ;; No overflow
+       ; TODO: This INC/BNE/INC type chain occurs in a few places (and the
+       ; automated jsr-maker.py won't find these, as the labels are different),
+       ; but we could probably save a few bytes by manually factoring this out.
        INC &C21C        ;; Sector1=Sector1+1
        BNE L8AA4        ;; No overflow
        INC &C21B        ;; Sector2=Sector2+1
