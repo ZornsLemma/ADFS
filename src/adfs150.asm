@@ -6710,8 +6710,7 @@ ENDIF
        LDA #&C4
        STA &B9
        LDX &CF
-.LAE38 LDY #&00
-       LDA (&B8),Y
+.LAE38 LDA (&B8)
        BNE LAE44
        STA &C3AC,X
        JMP LA76E
