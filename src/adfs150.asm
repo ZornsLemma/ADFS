@@ -8982,10 +8982,12 @@ ENDIF
        LDA &C3B6,X
        RTS
 
+IF INCLUDE_FLOPPY
 .chunk_50
        LDA #&01
        TSB &C2E4
        RTS
+ENDIF
 
 ;; This is cludge, need to check this is really not used in IDE Mode
 IF PATCH_IDE OR PATCH_SD
