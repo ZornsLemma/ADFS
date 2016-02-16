@@ -1017,7 +1017,8 @@ ENDIF
        JSR LA189
        JSR LA189
        LDY #&00
-       TYA
+       TYA		;; TODO: We might be able to get rid of this and use STZ
+                        ;; it depends if our callers rely on A=0
 .L84B0 STA &C100,Y
        STA &C000,Y
        STA &C400,Y
@@ -7127,8 +7128,7 @@ ENDIF
        STY &C241
        STY &B5          ;; Store Y -> filename
        AND #&C0         ;; Open or close?
-       LDY #&00
-       STY &C2D5
+       STZ &C2D5
        TAY              ;; Zero A and Y
        BNE LB231        ;; Jump ahead for open
        JMP LB3E0        ;; Jump to close
@@ -7137,8 +7137,7 @@ ENDIF
 ;; ----
 .LB231 LDA &C332        ;; Handle stored from *RUN?
        BEQ LB23E        ;; No, do a real OPEN
-       LDY #&00
-       STY &C332        ;; Clear stored handle
+       STZ &C332        ;; Clear stored handle
        LDY &B5          ;; Restore Y
        RTS              ;; Return handle from *RUN
 ;;
@@ -7564,8 +7563,7 @@ ENDIF
 ;;
 .LB5F0 TAY
        BEQ LB5EF
-       LDY #&00
-       LDA (&C6),Y
+       LDA (&C6)
        TAY
        JSR LAD0D
        PHP
@@ -7939,10 +7937,9 @@ ENDIF
        JSR LB8BC
        BMI LB925
 .LB96A JSR LB86B
-       LDY #&00
-       STY &C2B5
+       STZ &C2B5
        LDA &C8FA
-       STA (&C6),Y
+       STA (&C6)
        LDY #&05
        LDA (&C6),Y
        STA &B0
