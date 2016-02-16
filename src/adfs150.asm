@@ -212,6 +212,10 @@ ENDIF
 ;;
 .L80BD JSR L80DF        ;; Do the specified command
        BEQ L8098        ;; Exit if ok
+;;
+;; The SD driver never returns 'not ready'
+;;
+IF NOT(PATCH_SD)
        CMP #&04         ;; Not ready?
        BNE L80D7        ;; Jump if result<>Not ready
 ;;                                         If Drive not ready, pause a bit
@@ -224,6 +228,9 @@ ENDIF
        BNE L80C8        ;; Loop 256 times with X
        DEY
        BNE L80C8        ;; Loop 25 times with Y
+ENDIF
+;;
+;; TODO: It may be the SD driver can never return 'write protected' either
 ;;
 .L80D7 CMP #&40         ;; Result=Write protected?
        BEQ L80DF        ;; Abort immediately
@@ -4733,8 +4740,19 @@ ENDIF
        EQUS "RENAME", >(LA541-1), <(LA541-1), &22
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
-;;
- 
+
+.chunk_15
+       INX
+       INY
+       CPY #&03
+       RTS
+
+.chunk_16
+       LDA L883C,X
+       STA &C215,X
+       DEX
+       RTS
+
 .chunk_17
        LDA (&B6),Y
        STA &C21B,X
@@ -8893,19 +8911,6 @@ ENDIF
        LDY #&06
        LDA (&B0),Y      ;; Get drive
        ORA &C317        ;; OR with current drive
-       RTS
-
-.chunk_15
-       INX
-       INY
-       CPY #&03
-       RTS
-;;
-
-.chunk_16
-       LDA L883C,X
-       STA &C215,X
-       DEX
        RTS
 
 .chunk_40
