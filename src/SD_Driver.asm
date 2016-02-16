@@ -4,7 +4,7 @@
 
        LDY #5           ;; Get command, CC=Read, CS=Write
        LDA (&B0),Y
-       CMP #&09		;; TODO: What does this instruction do? Is it redundant?
+       CMP #&09
        AND #&FD         ;; Jump if Read (&08) or Write (&0A)
        EOR #&08
        BEQ CommandOk
