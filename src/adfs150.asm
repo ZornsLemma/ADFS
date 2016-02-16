@@ -1543,8 +1543,7 @@ ENDIF
        JSR L8847
        STA &C317
 .L8896 JSR L8731
-.L8899 LDX &C317        ;; Get current drive
-       INX              ;; If &FF, no directory loaded
+.L8899 JSR chunk_52
        BNE L88AD
 IF INCLUDE_FLOPPY
        JSR chunk_38
@@ -3120,8 +3119,7 @@ ENDIF
        jsr ldy_0_lda_b4_y
        CMP #&21
        BCS L9486
-       LDX &C317        ;; Get current drive
-       INX              ;; If &FF, no directory loaded
+       JSR chunk_52
        BNE L9477
 .L9486 JSR L8875
        BNE L9499
@@ -4216,8 +4214,7 @@ ENDIF
        JSR lda_c314_y_sta_c22c_y_dey
        BPL L9C1A
        JSR L89D8        ;; Get FSM and root from :0 if context<>-1
-       LDX &C317        ;; Get current drive
-       INX              ;; If &FF, no directory loaded
+       JSR chunk_52
        BEQ L9C7D        ;; No drive (eg *fadfs), jump ahead
        JSR LB4CD
 IF PATCH_IDE OR PATCH_SD
@@ -4275,8 +4272,7 @@ ENDIF
 .L9C8B PLA              ;; Get boot flag
        PHA
        BNE L9CA8        ;; No boot, jump forward
-       LDX &C317        ;; Get current drive
-       INX              ;; If &FF, no directory loaded
+       JSR chunk_52
        BNE L9C9B
        STX &C26F
        JSR LA1A1
@@ -5748,8 +5744,7 @@ ENDIF
 ;;
 ;; Check loaded directory
 ;; ----------------------
-.LA6FD LDX &C317        ;; Get current drive
-       INX              ;; If &FF, no directory loaded
+.LA6FD JSR chunk_52
        BNE LA72E        ;; Directory loaded, exit
        JSR L8372        ;; Generate error
        EQUB &A9         ;; ERR=169
@@ -6039,8 +6034,7 @@ ENDIF
 ;;
 ;; FSC 6 - New FS taking over
 ;; ==========================
-.LA96D LDX &C317        ;; Get current drive
-       INX              ;; If &FF, no directory loaded
+.LA96D JSR chunk_52
        BEQ LA983
        JSR L89D8
        LDA #&FF         ;; Continue into OSARGS &FF,0
@@ -8986,6 +8980,11 @@ ENDIF
 .chunk_51
        DEX
        LDA &C000,X
+       RTS
+
+.chunk_52
+       LDX &C317        ;; Get current drive
+       INX              ;; If &FF, no directory loaded
        RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
