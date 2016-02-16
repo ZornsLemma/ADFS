@@ -1779,8 +1779,7 @@ ENDIF
 ;;
 ;; Adjust the Length to be a whole number of sectors for writing
 ;;
-       LDA #&0
-       STA &C220
+       STZ &C220
        INC &C221
        BNE L8A68
        INC &C222
