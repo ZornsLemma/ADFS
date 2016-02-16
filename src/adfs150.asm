@@ -8109,8 +8109,7 @@ IF INCLUDE_FLOPPY
        BNE LBAAA
 .LBAA8 LDA #&06
 .LBAAA STA &0D5E
-       LDA #&01
-       TSB &C2E4
+       JSR chunk_50
        LDA &C201,X
        PHA
        LDA &C202,X
@@ -8146,8 +8145,7 @@ IF INCLUDE_FLOPPY
        JSR LBB3B
        CMP &A3
        BEQ LBB26
-       LDA #&01
-       TSB &C2E4
+       JSR chunk_50
        LDA #&14
 
        JSR chunk_13
@@ -8616,8 +8614,7 @@ IF INCLUDE_FLOPPY
 ;;
 .LBEAA LDA &0D5A
        BNE LBEF2
-       LDA #&01
-       TSB &C2E4
+       JSR chunk_50
        LDA &FE29        ;; FDC Track register
        CMP #&4F
        BCC LBEDA        ;; Less than 80
@@ -8689,8 +8686,7 @@ IF INCLUDE_FLOPPY
        BNE LBF30
 .LBF2E LDA #&06         ;; Drive 1,5 -> &06=RES+DS1
 .LBF30 STA &0D5E        ;; Store drive control byte
-       LDA #&01
-       TSB &C2E4
+       JSR chunk_50
        JSR LBF5E        ;; Calculate sector/track
        JSR chunk_36
        ROR A            ;; Rotate drive 1 bit into carry
@@ -8984,6 +8980,11 @@ ENDIF
 .chunk_49
        STA &C297
        LDA &C3B6,X
+       RTS
+
+.chunk_50
+       LDA #&01
+       TSB &C2E4
        RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
