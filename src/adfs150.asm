@@ -4487,8 +4487,7 @@ ENDIF
 ;;
 ;; Store result value and claim call
 ;; ---------------------------------
-.L9DB0 LDY #&00         ;; Point to result byte
-       STA (&BA),Y      ;; Store result in control block
+.L9DB0 STA (&BA)        ;; Store result in control block
 .L9DB4 LDX &F4          ;; Put ROM number in X
        PLY              ;; Restore Y
        LDA #&00         ;; A=0 to claim OSWORD
