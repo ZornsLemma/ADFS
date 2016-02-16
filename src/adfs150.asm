@@ -1061,8 +1061,7 @@ ENDIF
        INX
        STX &B2
        LDY #&02
-.L84FB DEX
-       LDA &C000,X
+.L84FB JSR chunk_51
        CMP &C234,Y
        BCS L8508
        LDX &B2
@@ -1196,8 +1195,7 @@ ENDIF
 .L85FF LDX &C1FE
 .L8602 CPX &B2
        BEQ L8615
-       DEX
-       LDA &C000,X
+       JSR chunk_51
        STA &C003,X
        LDA &C100,X
        STA &C103,X
@@ -1263,8 +1261,7 @@ ENDIF
        EQUB &00
 ;;
 .L86A5 LDY #&02
-.L86A7 DEX
-       LDA &C000,X
+.L86A7 JSR chunk_51
        STA &C23A,Y
        DEY
        BPL L86A7
@@ -1308,8 +1305,7 @@ ENDIF
        BPL L86E8
        LDX &B2
        LDY #&02
-.L86FA DEX
-       LDA &C000,X
+.L86FA JSR chunk_51
        STA &C23A,Y
        DEY
        BPL L86FA
@@ -3580,8 +3576,7 @@ ENDIF
        INX
        STX &B2
        LDY #&02
-.L9844 DEX
-       LDA &C000,X
+.L9844 JSR chunk_51
        CMP &C2A2,Y
        BCS L9851
        LDX &B2
@@ -4980,8 +4975,7 @@ ENDIF
        INX
        STX &C6
        LDY #&02
-.LA0B5 DEX
-       LDA &C000,X
+.LA0B5 JSR chunk_51
        JSR L9322
        DEY
        BPL LA0B5
@@ -8988,6 +8982,11 @@ IF INCLUDE_FLOPPY
        TSB &C2E4
        RTS
 ENDIF
+
+.chunk_51
+       DEX
+       LDA &C000,X
+       RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
 IF PATCH_IDE OR PATCH_SD
