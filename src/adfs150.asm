@@ -742,6 +742,10 @@ ENDIF
 .L82AE JSR L80A2        ;; Do a disk operation
        BEQ RTS2		;; Exit if OK	
 ;;
+;; TODO: We can possibly get rid of the CMP #&25/BEQ in the SD card case, as
+;; the SD card driver currently only ever returns error &27 'unsupported
+;; command'
+;;
 .L82BD CMP #&25         ;; Hard drive error &25 (Bad drive)?
        BEQ L82B4        ;; Jump to give 'Not found' error
        CMP #&65         ;; Floppy error &25 (Bad drive)
@@ -762,12 +766,16 @@ ENDIF
 .L82B4 JSR chunk_22
        JMP L8BE2        ;; Not Found error
 ;;
-.L82DC CMP #&04         ;; Hard drive error &04 (Not ready)?
+.L82DC 
+;; SD card can't ever not be ready
+IF NOT(PATCH_SD)
+       CMP #&04         ;; Hard drive error &04 (Not ready)?
        BNE L82F4        ;; No, try other errors
        JSR L836B        ;; Generate an error "Drive not ready"
        EQUB &CD         ;; ERR=205
        EQUS "Drive not ready"
        EQUB &00
+ENDIF
 ;;
 .L82F4 CMP #&40         ;; Floppy drive error &10 (WRPROT)?
        BEQ L830B        ;; Jump to report "Disk protected"
@@ -4738,6 +4746,20 @@ ENDIF
        EQUS "RENAME", >(LA541-1), <(LA541-1), &22
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
+
+.chunk_7
+       LDA &C2BA
+       LDX &C2BB
+       JSR L8053
+       LDA &C2BA
+       CMP #&FE
+       RTS
+
+.chunk_8
+       LDA &C3B6,X
+       AND #&E0
+       CMP &C317
+       RTS
 
 .chunk_9
        LDA &B4
@@ -8896,20 +8918,6 @@ ENDIF
        LDA #&80
        ROR A
        JMP LABE7
-
-.chunk_7
-       LDA &C2BA
-       LDX &C2BB
-       JSR L8053
-       LDA &C2BA
-       CMP #&FE
-       RTS
-
-.chunk_8
-       LDA &C3B6,X
-       AND #&E0
-       CMP &C317
-       RTS
 
 .chunk_40
        LDA (&B6),Y
