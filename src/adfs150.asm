@@ -575,7 +575,9 @@ ELSE
        RTS
 ENDIF
 ;;
+IF NOT(PATCH_SD OR PATCH_IDE)
 .L8212 SEI
+ENDIF
 .L8213 JSR &0406
        LDY #&00
        JSR L821B
@@ -4739,6 +4741,13 @@ ENDIF
        EQUS "RENAME", >(LA541-1), <(LA541-1), &22
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
+
+.chunk_9
+       LDA &B4
+       STA &C240
+       LDA &B5
+       STA &C241
+       JMP lda_40_sta_b8_lda_c2_sta_b9
 
 .chunk_10
        LDA #&FF
@@ -8904,13 +8913,6 @@ ENDIF
        AND #&E0
        CMP &C317
        RTS
-
-.chunk_9
-       LDA &B4
-       STA &C240
-       LDA &B5
-       STA &C241
-       JMP lda_40_sta_b8_lda_c2_sta_b9
 
 .chunk_40
        LDA (&B6),Y
