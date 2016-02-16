@@ -7715,8 +7715,7 @@ ENDIF
        CLC
        LDA &C3CA,X
        ADC &C9
-       STA &C296
-       LDA &C3C0,X
+       JSR chunk_48
        ADC &CA
        STA &C297
        LDA &C3B6,X
@@ -7828,8 +7827,7 @@ ENDIF
        CLC
        LDA &C3CA,X
        ADC &C29B
-       STA &C296
-       LDA &C3C0,X
+       JSR chunk_48
        ADC &C29C
        STA &C297
        LDA &C3B6,X
@@ -8842,8 +8840,7 @@ ENDIF
        CLC
        LDA &C3CA,X
        ADC &C370,X
-       STA &C296
-       LDA &C3C0,X
+       JSR chunk_48
        ADC &C366,X
        STA &C297
        LDA &C3B6,X
@@ -8981,6 +8978,11 @@ ENDIF
        JSR LB86B
        LDA #&01
        JMP LB8A5
+
+.chunk_48
+       STA &C296
+       LDA &C3C0,X
+       RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
 IF PATCH_IDE OR PATCH_SD
