@@ -1569,9 +1569,8 @@ ENDIF
        JSR L82AE        ;; Load '$'
        LDA #&02
        STA &C314        ;; Set CURR to &000002 - '$'
-       LDA #&00
-       STA &C315
-       STA &C316
+       STZ &C315
+       STZ &C316
        JSR LB4B9
        LDY #&00
        JSR L8743
@@ -2040,8 +2039,7 @@ ENDIF
        STA &C215        ;; Set flag byte to 1
        LDA #&08
        STA &C21A        ;; Command 'read'
-       LDA #&00
-       STA &C21F
+       STZ &C21F
        LDY #&16
        LDX #&03
 .L8C4E LDA (&B6),Y
@@ -2103,8 +2101,7 @@ IF PATCH_FULL_ACCESS
        STA (&B8),Y
        RTS
 ELSE
-       LDA #&00
-       STA &C22B        ;; Clear byte for access
+       STZ &C22B        ;; Clear byte for access
        LDY #&02         ;; Point to 'L' bit
 .L8C91 JSR chunk_28
        DEY
@@ -2318,8 +2315,7 @@ ENDIF
        STA &B5
        LDY #&1A
        LDX #&06
-       LDA #&00
-.L8E4E STA &C233,X
+.L8E4E STZ &C233,X
        DEX
        BNE L8E4E
 .L8E54 LDA (&B4,X)
@@ -4738,6 +4734,14 @@ ENDIF
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
 ;;
+ 
+.chunk_17
+       LDA (&B6),Y
+       STA &C21B,X
+       STA &C2FE,Y
+       INY
+       DEX
+       RTS
 
 .chunk_18
        LDA &B6
@@ -5160,9 +5164,8 @@ ENDIF
        EQUS " Sectors =", &A0
        LDX #&1F
        STX &C233
-       LDA #&00
        LDX #&09
-.LA22F STA &C240,X
+.LA22F STZ &C240,X
        DEX
        BPL LA22F
 .LA235 ASL &C215
@@ -8902,14 +8905,6 @@ ENDIF
 .chunk_16
        LDA L883C,X
        STA &C215,X
-       DEX
-       RTS
- 
-.chunk_17
-       LDA (&B6),Y
-       STA &C21B,X
-       STA &C2FE,Y
-       INY
        DEX
        RTS
 
