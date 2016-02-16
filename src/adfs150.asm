@@ -744,7 +744,9 @@ ENDIF
 ;;
 ;; TODO: We can possibly get rid of the CMP #&25/BEQ in the SD card case, as
 ;; the SD card driver currently only ever returns error &27 'unsupported
-;; command'
+;; command'. (If it ever does want to indicate this, it could return &65
+;; instead and then we could get rid of that code anyway, as the floppy case 
+;; would recognise &65 and do the same thing.)
 ;;
 .L82BD CMP #&25         ;; Hard drive error &25 (Bad drive)?
        BEQ L82B4        ;; Jump to give 'Not found' error
