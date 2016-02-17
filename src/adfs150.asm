@@ -4890,10 +4890,6 @@ ENDIF
        JSR L8DFE
        JMP L8E7A
 
-.chunk_32
-       LDA &C230,Y
-       JMP sta_c22c_y_dey ; TODO: Sure we can arrange this to be a bra if not a fall through
-
 .chunk_33
        JSR lda_b4_y_and_7f
        CMP #&22
@@ -8839,6 +8835,8 @@ ENDIF
        BPL lda_c314_y_sta_c22c_y_dey_bpl
        RTS
 
+.chunk_32
+       LDA &C230,Y
 .sta_c22c_y_dey
        STA &C22C,Y
        DEY
