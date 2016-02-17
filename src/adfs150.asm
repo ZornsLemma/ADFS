@@ -1275,10 +1275,7 @@ ENDIF
        EQUB &00
 ;;
 .L86A5 LDY #&02
-.L86A7 JSR chunk_51
-       STA &C23A,Y
-       DEY
-       BPL L86A7
+       JSR chunk_51_sta_c23a_y_dey_bpl
        INY
        LDX &B3
        CLC
@@ -1319,10 +1316,7 @@ ENDIF
        BPL L86E8
        LDX &B2
        LDY #&02
-.L86FA JSR chunk_51
-       STA &C23A,Y
-       DEY
-       BPL L86FA
+       JSR chunk_51_sta_c23a_y_dey_bpl
        LDX &B2
 .L8706 CPX &C1FE
        BCS L871A
@@ -4735,6 +4729,16 @@ ENDIF
        EQUS "RENAME", >(LA541-1), <(LA541-1), &22
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
+
+.chunk_3
+       STA &C21A
+       LDA &C314
+       STA &C21D
+       LDA &C315
+       STA &C21C
+       LDA &C316
+       STA &C21B
+       RTS
 
 .chunk_5
        LDY #&00         ;; Copy filename address again
@@ -8890,16 +8894,6 @@ ENDIF
        STA &C298        ;; &C296/7/8=&C3CA/B/C,X+&C370/1/2,X
        RTS
 
-.chunk_3
-       STA &C21A
-       LDA &C314
-       STA &C21D
-       LDA &C315
-       STA &C21C
-       LDA &C316
-       STA &C21B
-       RTS
-
 .chunk_40
        LDA (&B6),Y
        AND #&7F
@@ -8968,6 +8962,13 @@ ENDIF
 .chunk_51
        DEX
        LDA &C000,X
+       RTS
+
+.chunk_51_sta_c23a_y_dey_bpl
+       JSR chunk_51
+       STA &C23A,Y
+       DEY
+       BPL chunk_51_sta_c23a_y_dey_bpl
        RTS
 
 .chunk_52
