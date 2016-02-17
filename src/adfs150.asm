@@ -8184,12 +8184,8 @@ IF INCLUDE_FLOPPY
        AND #&40
        BNE LBA95
        PLA
-       AND #&20
-       BNE LBAA8
-       LDA #&05
-       BNE LBAAA
-.LBAA8 LDA #&06
-.LBAAA STA &0D5E
+       JSR chunk_58
+       STA &0D5E
        JSR chunk_50
        LDA &C201,X
        PHA
@@ -8761,12 +8757,8 @@ IF INCLUDE_FLOPPY
 ;; Drive 0,1,4,5
 ;; -------------
 .LBF24 LDA &A6          ;; Get drive
-       AND #&20
-       BNE LBF2E        ;; Drive 1,5 -> jump ahead
-       LDA #&05         ;; Drive 0,4 -> &05=RES+DS0
-       BNE LBF30
-.LBF2E LDA #&06         ;; Drive 1,5 -> &06=RES+DS1
-.LBF30 STA &0D5E        ;; Store drive control byte
+       JSR chunk_58
+       STA &0D5E        ;; Store drive control byte
        JSR chunk_50
        JSR LBF5E        ;; Calculate sector/track
        JSR chunk_36
@@ -8958,6 +8950,18 @@ ENDIF
        LDA #&0D
 .chunk_57_rts
        RTS
+
+IF INCLUDE_FLOPPY
+.chunk_58
+       AND #&20
+       BNE chunk_58_lda
+       LDA #&05
+       BNE chunk_58_rts
+.chunk_58_lda
+       LDA #&06
+.chunk_58_rts
+       RTS
+ENDIF
 
 ;; This is cludge, need to check this is really not used in IDE Mode
 IF PATCH_IDE OR PATCH_SD
