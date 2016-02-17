@@ -867,9 +867,7 @@ ENDIF
        INX
        BNE L8365
        LDY #&02
-.L835C 
-       JSR lda_c314_y_sta_c22c_y_dey
-       BPL L835C
+       JSR lda_c314_y_sta_c22c_y_dey_bpl
 .L8365 LDA &C317
        STA &C22F
 .L836B JSR L89D8
@@ -1576,9 +1574,7 @@ ENDIF
        LDA &C22E
        BPL L88CC
        LDY #&02
-.L88C3 
-       JSR lda_c314_y_sta_c22c_y_dey
-       BPL L88C3
+       JSR lda_c314_y_sta_c22c_y_dey_bpl
 .L88CC LDY #>L883C
        LDX #<L883C
        JSR L82AE        ;; Load '$'
@@ -1615,9 +1611,7 @@ ENDIF
        INC A
        BNE L89B4
        LDY #&02
-.L89AB 
-       JSR lda_c314_y_sta_c22c_y_dey
-       BPL L89AB
+       JSR lda_c314_y_sta_c22c_y_dey_bpl
 .L89B4 LDX #&0A
 .L89B6 JSR chunk_16
 
@@ -3148,9 +3142,7 @@ ENDIF
        INY
        BNE L94AF
        LDY #&02
-.L94A6 
-       JSR lda_c314_y_sta_c22c_y_dey
-       BPL L94A6
+       JSR lda_c314_y_sta_c22c_y_dey_bpl
 .L94AF LDX #&0A
 .L94B1 JSR chunk_16
        BPL L94B1
@@ -4222,9 +4214,7 @@ ENDIF
        BNE L9C18        ;; No, jump to keep context
        JSR L849A        ;; Set context to &FFFFFFFF when *fadfs
 .L9C18 LDY #&03         ;; Copy current context to backup context
-.L9C1A 
-       JSR lda_c314_y_sta_c22c_y_dey
-       BPL L9C1A
+       JSR lda_c314_y_sta_c22c_y_dey_bpl
        JSR L89D8        ;; Get FSM and root from :0 if context<>-1
        JSR chunk_52
        BEQ L9C7D        ;; No drive (eg *fadfs), jump ahead
@@ -4749,6 +4739,14 @@ ENDIF
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
 
+.chunk_6
+       STA &C298
+       LDA #&02
+       CMP &C2B4
+       LDA #&80
+       ROR A
+       JMP LABE7
+
 .chunk_7
        LDA &C2BA
        LDX &C2BB
@@ -4894,7 +4892,7 @@ ENDIF
 
 .chunk_32
        LDA &C230,Y
-       JMP sta_c22c_y_dey
+       JMP sta_c22c_y_dey ; TODO: Sure we can arrange this to be a bra if not a fall through
 
 .chunk_33
        JSR lda_b4_y_and_7f
@@ -5658,9 +5656,7 @@ ENDIF
 .LA5A5 LDA &C22E
        BPL LA5B5
        LDY #&02
-.LA5AC 
-       JSR lda_c314_y_sta_c22c_y_dey
-       BPL LA5AC
+       JSR lda_c314_y_sta_c22c_y_dey_bpl
 .LA5B5 JSR L89D8
        PLX
        PLA
@@ -6011,9 +6007,7 @@ ENDIF
        BPL LA879
        JSR L89D8
        LDY #&03
-.LA887 
-       JSR lda_c314_y_sta_c22c_y_dey
-       BPL LA887
+       JSR lda_c314_y_sta_c22c_y_dey_bpl
        JSR LA394
        JSR L8743
        BNE LA89B
@@ -8839,8 +8833,12 @@ ENDIF
 
 ENDIF
 
-.lda_c314_y_sta_c22c_y_dey
+.lda_c314_y_sta_c22c_y_dey_bpl
        LDA &C314,Y
+       JSR sta_c22c_y_dey
+       BPL lda_c314_y_sta_c22c_y_dey_bpl
+       RTS
+
 .sta_c22c_y_dey
        STA &C22C,Y
        DEY
@@ -8912,14 +8910,6 @@ ENDIF
        LDA (&B8),Y
        STA &B5
        RTS
-
-.chunk_6
-       STA &C298
-       LDA #&02
-       CMP &C2B4
-       LDA #&80
-       ROR A
-       JMP LABE7
 
 .chunk_40
        LDA (&B6),Y
