@@ -2194,20 +2194,7 @@ ENDIF
 .L8D2C LDX #&09
 .L8D2E LDA &C3AC,X
        BEQ L8D74
-       JSR chunk_8
-       BNE L8D74
-       LDA &C3E8,X
-       CMP &C314
-       BNE L8D74
-       LDA &C3DE,X
-       CMP &C315
-       BNE L8D74
-       LDA &C3D4,X
-       CMP &C316
-       BNE L8D74
-       LDY #&19
-       LDA (&B6),Y
-       CMP &C3F2,X
+       JSR chunk_53
        BNE L8D74
 .L8D5E JSR L836B
        EQUB &C2         ;; ERR=194
@@ -4730,6 +4717,17 @@ ENDIF
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
 
+.chunk_2
+       CLC
+       LDA &C3CA,X
+       ADC &C370,X
+       JSR chunk_48
+       ADC &C366,X
+       JSR chunk_49
+       ADC &C35C,X
+       STA &C298        ;; &C296/7/8=&C3CA/B/C,X+&C370/1/2,X
+       RTS
+
 .chunk_3
        STA &C21A
        LDA &C314
@@ -7234,20 +7232,7 @@ ENDIF
 .LB275 LDX #&09
 .LB277 LDA &C3AC,X
        BPL LB2AA
-       JSR chunk_8
-       BNE LB2AA
-       LDA &C3E8,X
-       CMP &C314
-       BNE LB2AA
-       LDA &C3DE,X
-       CMP &C315
-       BNE LB2AA
-       LDA &C3D4,X
-       CMP &C316
-       BNE LB2AA
-       LDY #&19
-       LDA (&B6),Y
-       CMP &C3F2,X
+       JSR chunk_53
        BNE LB2AA
        JMP L8D5E
 ;;
@@ -8883,17 +8868,6 @@ ENDIF
        LDA &00,X
        RTS
 
-.chunk_2
-       CLC
-       LDA &C3CA,X
-       ADC &C370,X
-       JSR chunk_48
-       ADC &C366,X
-       JSR chunk_49
-       ADC &C35C,X
-       STA &C298        ;; &C296/7/8=&C3CA/B/C,X+&C370/1/2,X
-       RTS
-
 .chunk_40
        LDA (&B6),Y
        AND #&7F
@@ -8975,6 +8949,26 @@ ENDIF
        LDX &C317        ;; Get current drive
        INX              ;; If &FF, no directory loaded
        RTS
+
+.chunk_53
+       JSR chunk_8 ; SFTODO
+       BNE chunk_53_rts
+       LDA &C3E8,X
+       CMP &C314
+       BNE chunk_53_rts
+       LDA &C3DE,X
+       CMP &C315
+       BNE chunk_53_rts
+       LDA &C3D4,X
+       CMP &C316
+       BNE chunk_53_rts
+       LDY #&19
+       LDA (&B6),Y
+       CMP &C3F2,X
+.chunk_53_rts
+       RTS
+       
+
 
 ;; This is cludge, need to check this is really not used in IDE Mode
 IF PATCH_IDE OR PATCH_SD
