@@ -23,6 +23,8 @@ def operation_bytes(op):
         return 2 # immediate
     if words[1] == 'A':
         return 1 # implied A (e.g. DEC A)
+    if words[0] in ['BRA', 'BCC', 'BCS', 'BEQ', 'BNE', 'BPL', 'BMI', 'BVC','BVS']:
+        return 2
     i = words[1].find('&')
     if i == -1:
         return 3 # argument is not a literal, so although it's slightly optimistic, it is probably a three byte instruction
