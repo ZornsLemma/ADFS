@@ -403,6 +403,8 @@ ELIF PATCH_IDE
        LDA &FC47
        AND #&21
        BNE TransDone    ;; Error occured
+; The next five lines are duplicated in the source, but only one copy (at most)
+; is included in any given build, so there's no point factoring them out.
        INC &C228
        BNE TubeAddr     ;; Increment Tube address
        INC &C229
@@ -565,6 +567,8 @@ ELSE
        INC &B3
        BRA L81E1
 ;;
+; The next five lines are duplicated in the source, but only one copy (at most)
+; is included in any given build, so there's no point factoring them out.
 .L8200 INC &C228
        BNE L820D
        INC &C229
