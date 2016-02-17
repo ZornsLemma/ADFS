@@ -958,7 +958,7 @@ ENDIF
 .L840F LDA &C2CE
        BNE L8417
        JSR LA7D4
-.L8417 LDA #&00
+.L8417 LDA #&00 ; TODO: possibly can use STZ here - L803A does BIT, but I *think* only the V flag is used which doesn't depend on A
        STA &0100
        STA &0101,Y
        JSR L803A
