@@ -3227,12 +3227,8 @@ ENDIF
        EQUB &00
 ;;
 
-.L95BE JSR chunk_33
-       BEQ L95CA
-       CMP #&21
-       BCS L95CC
-.L95CA LDA #&0D
-.L95CC STA (&B6),Y
+.L95BE JSR chunk_57
+       STA (&B6),Y
        DEY
        BPL L95BE
        JSR L8F5D
@@ -3263,12 +3259,8 @@ ENDIF
        DEX
        BPL L9600
        LDX #&00
-.L9614 JSR chunk_33
-       BEQ L9620
-       CMP #&21
-       BCS L9622
-.L9620 LDA #&0D
-.L9622 STA &CDD9,X
+.L9614 JSR chunk_57
+       STA &CDD9,X
        STA &CDCC,X
        INY
        INX
@@ -4940,6 +4932,16 @@ ENDIF
        CMP #&20
        RTS
 
+.chunk_47
+       JSR LB86B
+       LDA #&01
+       JMP LB8A5
+
+.chunk_48
+       STA &C296
+       LDA &C3C0,X
+       RTS
+
 IF PATCH_SD
        ;; The next set of strings must not straddle a page boundary
        ;; because code assumes the MSB is constant. See code at
@@ -5710,12 +5712,8 @@ ENDIF
 .LA5FC LDA (&B6),Y
        AND #&80
        STA &C22B
-       JSR chunk_33
-       BEQ LA60F
-       CMP #&21
-       BCS LA611
-.LA60F LDA #&0D
-.LA611 ORA &C22B
+       JSR chunk_57
+       ORA &C22B
        STA (&B6),Y
        DEY
        BPL LA5FC
@@ -8870,16 +8868,6 @@ ENDIF
        BPL chunk_40_sta_c274_y_dey_bpl
        RTS
 
-.chunk_47
-       JSR LB86B
-       LDA #&01
-       JMP LB8A5
-
-.chunk_48
-       STA &C296
-       LDA &C3C0,X
-       RTS
-
 .chunk_49
        STA &C297
        LDA &C3B6,X
@@ -8956,6 +8944,16 @@ ENDIF
        INC &C21B        ;; Sector2=Sector2+1
 .chunk_56_end
        LDA &C221        ;; Update length
+       RTS
+
+.chunk_57
+       JSR chunk_33
+       BEQ chunk_57_lda_d
+       CMP #&21
+       BCS chunk_57_rts
+.chunk_57_lda_d
+       LDA #&0D
+.chunk_57_rts
        RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
