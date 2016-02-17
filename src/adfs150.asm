@@ -1786,15 +1786,9 @@ ENDIF
        JSR L80A2        ;; Do a transfer
        BNE RTS6         ;; Exit with any error
        LDA #&FF         ;; Update address
-       CLC              ;; Addr=Addr+&0000FF00
-       ADC &C217        ;; Addr1=Addr1+&FF
-       STA &C217
-       BCC L8A91        ;; No overflow
-       INC &C218        ;; Addr2=Addr2+1
-       BNE L8A91        ;; No overflow
-       INC &C219        ;; Addr3=Addr3+1
-;;
-.L8A91 LDA #&FF         ;; Update sector
+       JSR chunk_54
+;      
+       LDA #&FF         ;; Update sector
        CLC
        ADC &C21D        ;; Sector=Sector+&FF
        STA &C21D        ;; Sector0=Sector0+&FF
@@ -1850,14 +1844,8 @@ ENDIF
        BNE L8AE6
        INC &C21B        ;; Increment Sector2
 .L8AE6 LDA &C221        ;; Get Length1
-       CLC
-       ADC &C217        ;; Add to Addr1
-       STA &C217        ;; Store Addr1
-       BCC L8AFA
-       INC &C218        ;; Increment Addr2
-       BNE L8AFA
-       INC &C219        ;; Increment Addr3
-.L8AFA JSR L8328        ;; Wait for ensuring to finish
+       JSR chunk_54
+       JSR L8328        ;; Wait for ensuring to finish
        JSR L8099        ;; Initialise retries
 .L8B00 JSR L8B09        ;; Call to load data
        BEQ RTS7         ;; All ok, so exit
@@ -4712,6 +4700,21 @@ ENDIF
        EQUS "RENAME", >(LA541-1), <(LA541-1), &22
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
+
+.chunk_1
+       LDA &00,X
+       STA &C29A
+       LDA &01,X
+       STA &C29B
+       LDA &02,X
+       STA &C29C
+       LDA &03,X
+       STA &C29D
+       JSR LAE68
+       LDX &C3
+       LDY &CF
+       LDA &00,X
+       RTS
 
 .chunk_2
        CLC
@@ -8850,21 +8853,6 @@ ENDIF
        STA &B6
        RTS
 
-.chunk_1
-       LDA &00,X
-       STA &C29A
-       LDA &01,X
-       STA &C29B
-       LDA &02,X
-       STA &C29C
-       LDA &03,X
-       STA &C29D
-       JSR LAE68
-       LDX &C3
-       LDY &CF
-       LDA &00,X
-       RTS
-
 .chunk_40
        LDA (&B6),Y
        AND #&7F
@@ -8965,6 +8953,16 @@ ENDIF
 .chunk_53_rts
        RTS
        
+.chunk_54
+       CLC              ;; Addr=Addr+&0000FF00
+       ADC &C217        ;; Addr1=Addr1+&FF
+       STA &C217
+       BCC chunk_54_rts ;; No overflow
+       INC &C218        ;; Addr2=Addr2+1
+       BNE chunk_54_rts ;; No overflow
+       INC &C219        ;; Addr3=Addr3+1
+.chunk_54_rts
+       RTS
 
 
 ;; This is cludge, need to check this is really not used in IDE Mode
