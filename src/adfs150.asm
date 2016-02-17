@@ -2172,8 +2172,15 @@ ENDIF
 .L8CEC RTS
 ;;
 .L8CED JSR L8CD4
-       BEQ L8D1B
        BNE L8CF9
+;;
+.L8D1B LDY #&02
+       LDA (&B6),Y
+       BPL L8D2C
+       JSR L836B
+       EQUB &C3         ;; ERR=195
+       EQUS "Locked"
+       EQUB &00
 .L8CF4 JSR L8CD4
        BEQ L8D12
 .L8CF9 LDY #&00
@@ -2195,14 +2202,6 @@ ENDIF
        JSR ldy_3_lda_b6_y
        BPL L8D1B
        JMP L95AB
-;;
-.L8D1B LDY #&02
-       LDA (&B6),Y
-       BPL L8D2C
-       JSR L836B
-       EQUB &C3         ;; ERR=195
-       EQUS "Locked"
-       EQUB &00
 ;;
 .L8D2C LDX #&09
 .L8D2E LDA &C3AC,X
