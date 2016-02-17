@@ -5790,10 +5790,7 @@ ENDIF
        DEY
        BPL LA6C4
        LDY #&09
-.LA6CF JSR chunk_40
-       STA &C274,Y
-       DEY
-       BPL LA6CF
+       JSR chunk_40_sta_c274_y_dey_bpl
        LDA #&74
        STA &B4
        LDA #&C2
@@ -6056,10 +6053,7 @@ ENDIF
        DEY
        BPL LA8EE
        LDY #&09
-.LA8FD JSR chunk_40
-       STA &C274,Y
-       DEY
-       BPL LA8FD
+       JSR chunk_40_sta_c274_y_dey_bpl
        LDA #&0D
        STA &C27E
        JSR LA821
@@ -8909,6 +8903,13 @@ ENDIF
 .chunk_40
        LDA (&B6),Y
        AND #&7F
+       RTS
+
+.chunk_40_sta_c274_y_dey_bpl
+       JSR chunk_40
+       STA &C274,Y
+       DEY
+       BPL chunk_40_sta_c274_y_dey_bpl
        RTS
 
 .chunk_42
