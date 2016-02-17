@@ -1595,11 +1595,8 @@ ENDIF
        BNE RTS4
 .L8997 LDA &C2A2
        SEC
-       ADC &B4
-       STA &B4
-       BCC L89A3
-       INC &B5
-.L89A3 LDA &C22E
+       JSR chunk_55
+       LDA &C22E
        INC A
        BNE L89B4
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
@@ -4667,11 +4664,8 @@ ENDIF
        BCC L9EE3
 .L9F17 TYA              ;; Update &B4/5 to point to params
        CLC
-       ADC &B4
-       STA &B4
-       BCC L9F21
-       INC &B5
-.L9F21 JSR LA50D        ;; Skip spaces, etc.
+       JSR chunk_55
+       JSR LA50D        ;; Skip spaces, etc.
 .L9F24 LDA L9F2D,X      ;; Get command address
        PHA              ;; Stack it
        LDA L9F2D+1,X
@@ -4925,6 +4919,11 @@ ENDIF
 .chunk_38
        LDA &CD          ;; Get ADFS I/O status
        AND #&20         ;; Hard drive present?
+       RTS
+
+.chunk_40
+       LDA (&B6),Y
+       AND #&7F
        RTS
 
 IF PATCH_SD
@@ -5572,10 +5571,7 @@ ENDIF
        BEQ LA4FC
        TYA
        CLC
-       ADC &B4
-       STA &B4
-       BCC LA50D
-       INC &B5
+       JSR chunk_55
 ;;
 .LA50D 
        LDY #&00
@@ -8853,11 +8849,6 @@ ENDIF
        STA &B6
        RTS
 
-.chunk_40
-       LDA (&B6),Y
-       AND #&7F
-       RTS
-
 .chunk_40_sta_c274_y_dey_bpl
        JSR chunk_40
        STA &C274,Y
@@ -8964,6 +8955,13 @@ ENDIF
 .chunk_54_rts
        RTS
 
+.chunk_55
+       ADC &B4
+       STA &B4
+       BCC chunk_55_rts
+       INC &B5
+.chunk_55_rts
+       RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
 IF PATCH_IDE OR PATCH_SD
