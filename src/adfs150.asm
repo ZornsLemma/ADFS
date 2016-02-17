@@ -1605,7 +1605,40 @@ ENDIF
        JSR L8743
        CMP #&2E
        BNE RTS4
-       BRA L8997
+.L8997 LDA &C2A2
+       SEC
+       ADC &B4
+       STA &B4
+       BCC L89A3
+       INC &B5
+.L89A3 LDA &C22E
+       INC A
+       BNE L89B4
+       LDY #&02
+.L89AB 
+       JSR lda_c314_y_sta_c22c_y_dey
+       BPL L89AB
+.L89B4 LDX #&0A
+.L89B6 JSR chunk_16
+
+       BPL L89B6
+       LDX #&02
+       LDY #&16
+.L89C3 JSR chunk_17
+       BPL L89C3
+       JSR L82AA
+       JMP L88FD
+;;
+.L897B LDY #&09
+       LDA (&B6),Y
+       BPL L8997
+       AND #&7F
+       STA (&B6),Y
+       JSR L8F91
+.L8988 JSR L836B
+       EQUB &B0         ;; ERR=176
+       EQUS "Bad rename"
+       EQUB &00
 ;;
 .L8910 LDA #&24
        STA &C262
@@ -1662,40 +1695,6 @@ ENDIF
        BNE L8964
        RTS
 ;;
-.L897B LDY #&09
-       LDA (&B6),Y
-       BPL L8997
-       AND #&7F
-       STA (&B6),Y
-       JSR L8F91
-.L8988 JSR L836B
-       EQUB &B0         ;; ERR=176
-       EQUS "Bad rename"
-       EQUB &00
-;;
-.L8997 LDA &C2A2
-       SEC
-       ADC &B4
-       STA &B4
-       BCC L89A3
-       INC &B5
-.L89A3 LDA &C22E
-       INC A
-       BNE L89B4
-       LDY #&02
-.L89AB 
-       JSR lda_c314_y_sta_c22c_y_dey
-       BPL L89AB
-.L89B4 LDX #&0A
-.L89B6 JSR chunk_16
-
-       BPL L89B6
-       LDX #&02
-       LDY #&16
-.L89C3 JSR chunk_17
-       BPL L89C3
-       JSR L82AA
-       JMP L88FD
 ;;
 .L89D5 LDA &C2C0
 ;;
