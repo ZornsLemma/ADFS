@@ -3249,10 +3249,7 @@ ENDIF
 ;;
 .L9546 JSR L9486
        LDY #&09
-.L954B LDA &C8CC,Y
-       STA &C300,Y
-       DEY
-       BPL L954B
+.L954B JSR LA4EB
        LDA &C22F
        CMP #&FF
        BNE L955E
@@ -4738,6 +4735,15 @@ ENDIF
        EQUS "RENAME", >(LA541-1), <(LA541-1), &22
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
+
+.chunk_5
+       LDY #&00         ;; Copy filename address again
+       LDA (&B8),Y
+       STA &B4
+       INY
+       LDA (&B8),Y
+       STA &B5
+       RTS
 
 .chunk_6
        STA &C298
@@ -8898,15 +8904,6 @@ ENDIF
        STA &C21C
        LDA &C316
        STA &C21B
-       RTS
-
-.chunk_5
-       LDY #&00         ;; Copy filename address again
-       LDA (&B8),Y
-       STA &B4
-       INY
-       LDA (&B8),Y
-       STA &B5
        RTS
 
 .chunk_40
