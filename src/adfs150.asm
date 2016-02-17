@@ -1786,18 +1786,9 @@ ENDIF
        JSR chunk_54
 ;      
        LDA #&FF         ;; Update sector
-       CLC
-       ADC &C21D        ;; Sector=Sector+&FF
-       STA &C21D        ;; Sector0=Sector0+&FF
-       BCC L8AA4        ;; No overflow
-       ; TODO: This INC/BNE/INC type chain occurs in a few places (and the
-       ; automated jsr-maker.py won't find these, as the labels are different),
-       ; but we could probably save a few bytes by manually factoring this out.
-       INC &C21C        ;; Sector1=Sector1+1
-       BNE L8AA4        ;; No overflow
-       INC &C21B        ;; Sector2=Sector2+1
+       JSR chunk_56
 ;;
-.L8AA4 LDA &C221        ;; Update length
+       LDA &C221        ;; Update length
        SEC
        SBC #&FF         ;; Length=Length-&0000FF00
        STA &C221        ;; Length1=Length1-&FF
@@ -1833,14 +1824,8 @@ ENDIF
 ;; -------------------------------------------------------
 .L8ACF STA &C21E        ;; Store Length0 in Sector Count
        LDA &C221        ;; Get last length transfered
-       CLC
-       ADC &C21D        ;; Add to Sector0
-       STA &C21D        ;; Store in Sector0
-       BCC L8AE6
-       INC &C21C        ;; Increment Sector1
-       BNE L8AE6
-       INC &C21B        ;; Increment Sector2
-.L8AE6 LDA &C221        ;; Get Length1
+       JSR chunk_56
+       LDA &C221        ;; Get Length1
        JSR chunk_54
        JSR L8328        ;; Wait for ensuring to finish
        JSR L8099        ;; Initialise retries
@@ -4924,6 +4909,30 @@ ENDIF
 .chunk_40
        LDA (&B6),Y
        AND #&7F
+       RTS
+
+.chunk_42
+       LDA #&05
+       STA &B6
+       LDA #&C4
+       STA &B7
+       RTS
+
+.chunk_43
+       LDA (&B4),Y      ;; Get current character
+       CMP #&20         ;; Is it a space?
+       RTS
+
+.chunk_44
+       JSR LABE7        ;; Manipulate various things
+       LDX &CF
+       LDY &C37A,X
+       RTS
+
+.chunk_45
+       LDA &C3A2,X
+       CMP #&01
+       LDA &C398,X
        RTS
 
 IF PATCH_SD
@@ -8856,30 +8865,6 @@ ENDIF
        BPL chunk_40_sta_c274_y_dey_bpl
        RTS
 
-.chunk_42
-       LDA #&05
-       STA &B6
-       LDA #&C4
-       STA &B7
-       RTS
-
-.chunk_43
-       LDA (&B4),Y      ;; Get current character
-       CMP #&20         ;; Is it a space?
-       RTS
-
-.chunk_44
-       JSR LABE7        ;; Manipulate various things
-       LDX &CF
-       LDY &C37A,X
-       RTS
-
-.chunk_45
-       LDA &C3A2,X
-       CMP #&01
-       LDA &C398,X
-       RTS
-
 .chunk_46
        INY
        LDA &C8D9,Y
@@ -8961,6 +8946,17 @@ ENDIF
        BCC chunk_55_rts
        INC &B5
 .chunk_55_rts
+       RTS
+
+.chunk_56
+       CLC
+       ADC &C21D        ;; Sector=Sector+&FF
+       STA &C21D        ;; Sector0=Sector0+&FF
+       BCC chunk_56_rts ;; No overflow
+       INC &C21C        ;; Sector1=Sector1+1
+       BNE chunk_56_rts ;; No overflow
+       INC &C21B        ;; Sector2=Sector2+1
+.chunk_56_rts
        RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
