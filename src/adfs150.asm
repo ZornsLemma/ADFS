@@ -4946,19 +4946,58 @@ ENDIF
        LDA &C3C0,X
        RTS
 
-IF PATCH_SD
-       ;; The next set of strings must not straddle a page boundary
-       ;; because code assumes the MSB is constant. See code at
-       ;; .L9283 
-       IF  ((P% AND &FF) > &B1)
-       	       \ TODO: If we're squishing, we don't want to waste space like
-	       \ this - if it happens, we should shuffle some code into the dead
-	       \ space, e.g. one of the little three or four instruction
-	       \ subroutines.
-	       ERROR "Dead space"
-               ORG ((P% + &FF) AND &FF00) 
-       ENDIF
+.chunk_49
+       STA &C297
+       LDA &C3B6,X
+       RTS
+
+.chunk_51
+       DEX
+       LDA &C000,X
+       RTS
+
+.chunk_51_sta_c23a_y_dey_bpl
+       JSR chunk_51
+       STA &C23A,Y
+       DEY
+       BPL chunk_51_sta_c23a_y_dey_bpl
+       RTS
+
+.chunk_52
+       LDX &C317        ;; Get current drive
+       INX              ;; If &FF, no directory loaded
+       RTS
+
+.chunk_53
+       JSR chunk_8
+       BNE chunk_53_rts
+       LDA &C3E8,X
+       CMP &C314
+       BNE chunk_53_rts
+       LDA &C3DE,X
+       CMP &C315
+       BNE chunk_53_rts
+       LDA &C3D4,X
+       CMP &C316
+       BNE chunk_53_rts
+       LDY #&19
+       LDA (&B6),Y
+       CMP &C3F2,X
+.chunk_53_rts
+       RTS
+       
+;; The next set of strings must not straddle a page boundary
+;; because code assumes the MSB is constant. See code at
+;; .L9283 
+IF  ((P% AND &FF) > &B1)
+       \ TODO: If we're squishing, we don't want to waste space like
+       \ this - if it happens, we should shuffle some code into the dead
+       \ space, e.g. one of the little three or four instruction
+       \ subroutines.
+       ERROR "Dead space"
+       ORG ((P% + &FF) AND &FF00) 
 ENDIF
+
 .L9FB1 EQUS "<List Spec>"
        EQUB &00
 .L9FBD EQUS "<Ob Spec>"
@@ -8872,11 +8911,6 @@ ENDIF
        BPL chunk_40_sta_c274_y_dey_bpl
        RTS
 
-.chunk_49
-       STA &C297
-       LDA &C3B6,X
-       RTS
-
 IF INCLUDE_FLOPPY
 .chunk_50
        LDA #&01
@@ -8884,41 +8918,6 @@ IF INCLUDE_FLOPPY
        RTS
 ENDIF
 
-.chunk_51
-       DEX
-       LDA &C000,X
-       RTS
-
-.chunk_51_sta_c23a_y_dey_bpl
-       JSR chunk_51
-       STA &C23A,Y
-       DEY
-       BPL chunk_51_sta_c23a_y_dey_bpl
-       RTS
-
-.chunk_52
-       LDX &C317        ;; Get current drive
-       INX              ;; If &FF, no directory loaded
-       RTS
-
-.chunk_53
-       JSR chunk_8
-       BNE chunk_53_rts
-       LDA &C3E8,X
-       CMP &C314
-       BNE chunk_53_rts
-       LDA &C3DE,X
-       CMP &C315
-       BNE chunk_53_rts
-       LDA &C3D4,X
-       CMP &C316
-       BNE chunk_53_rts
-       LDY #&19
-       LDA (&B6),Y
-       CMP &C3F2,X
-.chunk_53_rts
-       RTS
-       
 .chunk_54
        CLC              ;; Addr=Addr+&0000FF00
        ADC &C217        ;; Addr1=Addr1+&FF
