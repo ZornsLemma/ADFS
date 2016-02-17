@@ -1788,7 +1788,6 @@ ENDIF
        LDA #&FF         ;; Update sector
        JSR chunk_56
 ;;
-       LDA &C221        ;; Update length
        SEC
        SBC #&FF         ;; Length=Length-&0000FF00
        STA &C221        ;; Length1=Length1-&FF
@@ -1825,7 +1824,6 @@ ENDIF
 .L8ACF STA &C21E        ;; Store Length0 in Sector Count
        LDA &C221        ;; Get last length transfered
        JSR chunk_56
-       LDA &C221        ;; Get Length1
        JSR chunk_54
        JSR L8328        ;; Wait for ensuring to finish
        JSR L8099        ;; Initialise retries
@@ -4933,6 +4931,13 @@ ENDIF
        LDA &C3A2,X
        CMP #&01
        LDA &C398,X
+       RTS
+
+.chunk_46
+       INY
+       LDA &C8D9,Y
+       AND #&7F
+       CMP #&20
        RTS
 
 IF PATCH_SD
@@ -8865,13 +8870,6 @@ ENDIF
        BPL chunk_40_sta_c274_y_dey_bpl
        RTS
 
-.chunk_46
-       INY
-       LDA &C8D9,Y
-       AND #&7F
-       CMP #&20
-       RTS
-
 .chunk_47
        JSR LB86B
        LDA #&01
@@ -8952,11 +8950,12 @@ ENDIF
        CLC
        ADC &C21D        ;; Sector=Sector+&FF
        STA &C21D        ;; Sector0=Sector0+&FF
-       BCC chunk_56_rts ;; No overflow
+       BCC chunk_56_end ;; No overflow
        INC &C21C        ;; Sector1=Sector1+1
-       BNE chunk_56_rts ;; No overflow
+       BNE chunk_56_end ;; No overflow
        INC &C21B        ;; Sector2=Sector2+1
-.chunk_56_rts
+.chunk_56_end
+       LDA &C221        ;; Update length
        RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
