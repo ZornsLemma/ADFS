@@ -866,8 +866,7 @@ ENDIF
        LDX &C22E
        INX
        BNE L8365
-       LDY #&02
-       JSR lda_c314_y_sta_c22c_y_dey_bpl
+       JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L8365 LDA &C317
        STA &C22F
 .L836B JSR L89D8
@@ -1567,8 +1566,7 @@ ENDIF
        TRB &CD          ;; Flag FSM loaded
        LDA &C22E
        BPL L88CC
-       LDY #&02
-       JSR lda_c314_y_sta_c22c_y_dey_bpl
+       JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L88CC LDY #>L883C
        LDX #<L883C
        JSR L82AE        ;; Load '$'
@@ -1604,8 +1602,7 @@ ENDIF
 .L89A3 LDA &C22E
        INC A
        BNE L89B4
-       LDY #&02
-       JSR lda_c314_y_sta_c22c_y_dey_bpl
+       JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L89B4 LDX #&0A
 .L89B6 JSR chunk_16
 
@@ -3122,8 +3119,7 @@ ENDIF
 .L949E LDY &C22E
        INY
        BNE L94AF
-       LDY #&02
-       JSR lda_c314_y_sta_c22c_y_dey_bpl
+       JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L94AF LDX #&0A
 .L94B1 JSR chunk_16
        BPL L94B1
@@ -5659,8 +5655,7 @@ ENDIF
        BPL LA59C
 .LA5A5 LDA &C22E
        BPL LA5B5
-       LDY #&02
-       JSR lda_c314_y_sta_c22c_y_dey_bpl
+       JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .LA5B5 JSR L89D8
        PLX
        PLA
@@ -8818,6 +8813,8 @@ ENDIF
 
 ENDIF
 
+.ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
+       LDY #&02
 .lda_c314_y_sta_c22c_y_dey_bpl
        LDA &C314,Y
        JSR sta_c22c_y_dey
@@ -8951,7 +8948,7 @@ ENDIF
        RTS
 
 .chunk_53
-       JSR chunk_8 ; SFTODO
+       JSR chunk_8
        BNE chunk_53_rts
        LDA &C3E8,X
        CMP &C314
