@@ -1604,8 +1604,7 @@ ENDIF
        INC A
        BNE L89B4
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
-.L89B4 LDX #&0A
-       JSR chunk_16
+.L89B4 JSR chunk_16
        LDX #&02
        LDY #&16
 .L89C3 JSR chunk_17
@@ -2451,7 +2450,6 @@ ENDIF
 ;;
 .L8F91 JSR LA714
        JSR L9012
-       LDX #&0A
        JSR chunk_16
        LDA #&0A
 
@@ -3110,8 +3108,7 @@ ENDIF
        INY
        BNE L94AF
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
-.L94AF LDX #&0A
-       JSR chunk_16
+.L94AF JSR chunk_16
        LDX #&02
        LDY #&16
 .L94BE JSR chunk_17
@@ -4788,10 +4785,12 @@ ENDIF
        RTS
 
 .chunk_16
+       LDX #&0A
+.chunk_16_loop
        LDA L883C,X
        STA &C215,X
        DEX
-       BPL chunk_16
+       BPL chunk_16_loop
        RTS
 
 .chunk_17
@@ -5061,6 +5060,13 @@ ENDIF
        LDA (&B6),Y
        ORA #&80
        STA (&B6),Y
+       RTS
+
+.chunk_32
+       LDA &C230,Y
+.sta_c22c_y_dey
+       STA &C22C,Y
+       DEY
        RTS
 
 ;; The next set of strings must not straddle a page boundary
@@ -8930,13 +8936,6 @@ ENDIF
        LDA &C314,Y
        JSR sta_c22c_y_dey
        BPL lda_c314_y_sta_c22c_y_dey_bpl
-       RTS
-
-.chunk_32
-       LDA &C230,Y
-.sta_c22c_y_dey
-       STA &C22C,Y
-       DEY
        RTS
 
 .lda_40_sta_b8_lda_c2_sta_b9
