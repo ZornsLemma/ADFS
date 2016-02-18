@@ -2601,12 +2601,7 @@ ENDIF
        JSR chunk_27
        BPL L909B
        LDY #&0D
-       LDX #&03
-.L90A8 LDA &C215,X
-       STA (&B6),Y
-       DEY
-       DEX
-       BPL L90A8
+       JSR chunk_61
        LDA &C223
        CMP #&02
        BEQ L9104
@@ -2616,12 +2611,7 @@ ENDIF
        JSR chunk_27
        BPL L90BC
        LDY #&11
-       LDX #&03
-.L90C9 LDA &C215,X
-       STA (&B6),Y
-       DEY
-       DEX
-       BPL L90C9
+       JSR chunk_61
        LDX &C223
        DEX
        BNE L9104
@@ -5067,6 +5057,14 @@ ENDIF
 .sta_c22c_y_dey
        STA &C22C,Y
        DEY
+       RTS
+
+.ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
+       LDY #&02
+.lda_c314_y_sta_c22c_y_dey_bpl
+       LDA &C314,Y
+       JSR sta_c22c_y_dey
+       BPL lda_c314_y_sta_c22c_y_dey_bpl
        RTS
 
 ;; The next set of strings must not straddle a page boundary
@@ -8927,14 +8925,6 @@ ENDIF
 
 ENDIF
 
-.ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
-       LDY #&02
-.lda_c314_y_sta_c22c_y_dey_bpl
-       LDA &C314,Y
-       JSR sta_c22c_y_dey
-       BPL lda_c314_y_sta_c22c_y_dey_bpl
-       RTS
-
 .lda_40_sta_b8_lda_c2_sta_b9
        LDA #&40
 .sta_b8_lda_c2_sta_b9
@@ -8968,6 +8958,16 @@ ENDIF
 .chunk_60_dont_sta
        INX
        DEY
+       RTS
+
+.chunk_61
+       LDX #&03
+.chunk_61_loop
+       LDA &C215,X
+       STA (&B6),Y
+       DEY
+       DEX
+       BPL chunk_61_loop
        RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
