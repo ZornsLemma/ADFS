@@ -2262,18 +2262,7 @@ ENDIF
 ;;
 .L8DFE JSR L8CF4
 .L8E01 BNE L8E24
-       LDX #&02
-       JSR chunk_29
-.L8E0B JSR chunk_30
-       BPL L8E0B
-       LDY #&18
-       LDX #&02
-.L8E1A LDA (&B6),Y
-       STA &C234,X
-       DEY
-       DEX
-       BPL L8E1A
-       RTS
+       JMP chunk_30
 ;;
 .L8E24 LDA &C8B1
        BEQ L8E36
@@ -2712,17 +2701,7 @@ ENDIF
        EQUB &00
 ;;
 .L9177 
-       LDX #&02
-       JSR chunk_29
-.L917F JSR chunk_30
-       BPL L917F
-       LDY #&18
-       LDX #&02
-.L918E LDA (&B6),Y
-       STA &C234,X
-       DEY
-       DEX
-       BPL L918E
+       JSR chunk_30
        JSR ldy_3_lda_b6_y
        BPL L921B
        LDX &C22F
@@ -4861,11 +4840,23 @@ ENDIF
        RTS
 
 .chunk_30
+       LDX #&02
+       JSR chunk_29
+.chunk_30_loop1
        INY
        LDA #&00
        ADC (&B6),Y
        STA &C224,Y
        DEX
+       BPL chunk_30_loop1
+       LDY #&18
+       LDX #&02
+.chunk_30_loop2
+       LDA (&B6),Y
+       STA &C234,X
+       DEY
+       DEX
+       BPL chunk_30_loop2
        RTS
 
 .chunk_31
@@ -5065,6 +5056,24 @@ ENDIF
        LDA &C314,Y
        JSR sta_c22c_y_dey
        BPL lda_c314_y_sta_c22c_y_dey_bpl
+       RTS
+
+.lda_40_sta_b8_lda_c2_sta_b9
+       LDA #&40
+.sta_b8_lda_c2_sta_b9
+       STA &B8
+       LDA #&C2
+       STA &B9
+       RTS
+
+.chunk_60
+       STA &C314,Y
+       CPX #&00
+       BEQ chunk_60_dont_sta
+       STA &C21A,X
+.chunk_60_dont_sta
+       INX
+       DEY
        RTS
 
 ;; The next set of strings must not straddle a page boundary
@@ -8919,14 +8928,6 @@ ENDIF
 
 ENDIF
 
-.lda_40_sta_b8_lda_c2_sta_b9
-       LDA #&40
-.sta_b8_lda_c2_sta_b9
-       STA &B8
-       LDA #&C2
-       STA &B9
-       RTS
-
 IF INCLUDE_FLOPPY
 .chunk_58
        AND #&20
@@ -8943,16 +8944,6 @@ IF INCLUDE_FLOPPY
        TSB &C2E4
        RTS
 ENDIF
-
-.chunk_60
-       STA &C314,Y
-       CPX #&00
-       BEQ chunk_60_dont_sta
-       STA &C21A,X
-.chunk_60_dont_sta
-       INX
-       DEY
-       RTS
 
 .chunk_61
        LDX #&03
