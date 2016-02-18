@@ -3665,9 +3665,8 @@ ENDIF
        DEY
        LDA (&B6),Y      ;; Get 'D' bit
        AND #&80
-       LDY #&00
-       ORA (&B6),Y      ;; Copy 'D' bit into 'R' bit
-       STA (&B6),Y      ;; Forces dirs to always have 'R'
+       ORA (&B6)        ;; Copy 'D' bit into 'R' bit
+       STA (&B6)        ;; Forces dirs to always have 'R'
 ;;
 .L996A STA &C22B        ;; Store 'E' or 'D'+'R' bit
        LDY #&00         ;; Step past filename
