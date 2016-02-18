@@ -3361,9 +3361,8 @@ ENDIF
 .L96D7 STA &C21E
        LDA &C260
        STA &C217
-       LDX #&00
-       STX &C216
-       DEX
+       STZ &C216
+       LDX #&FF
        STX &C218
        STX &C219
 .L96EC SEC
