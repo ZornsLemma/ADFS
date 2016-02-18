@@ -6644,7 +6644,11 @@ IF PATCH_IDE OR PATCH_SD
 ELSE
        BMI LACD5        ;; If SCSI writing, finish
 ENDIF
+IF NOT(PATCH_SD)
+       ;; JSR MMC_StartRead will hit MMC_DoCommand which will do LDY, so this is
+       ;; redundant in this case at least.
        LDY #&00
+ENDIF
 IF PATCH_SD     
 .LACCD LDA &B2
        PHA
