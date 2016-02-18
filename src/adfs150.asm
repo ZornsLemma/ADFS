@@ -3596,12 +3596,12 @@ ENDIF
        LDA &C0
        CMP #&FE
        BEQ L9913
-       ; We don't need this LDY #&00; it's intended for the following two STA
-       ; (zp) instructions which used to be STA (zp),Y. We exit this loop at
-       ; L98CE which does JSR L9486 which does JSR L8875
-       ; which does JSR L8738 which does JSR LA50D which does LDY #&00, so no
-       ; following code relies on our assignment to Y.
-       ; LDY #&00
+       ;; We don't need this LDY #&00; it's intended for the following two STA
+       ;; (zp) instructions which used to be STA (zp),Y. We exit this loop at
+       ;; L98CE which does JSR L9486 which does JSR L8875
+       ;; which does JSR L8738 which does JSR LA50D which does LDY #&00, so no
+       ;; following code relies on our assignment to Y.
+       ;; LDY #&00
        LDA &B6
        STA &B4
        STA (&C0)
@@ -3623,12 +3623,17 @@ ENDIF
        LDA #>L9940
        STA &B5
        JSR L9486
-       LDY #&00
+       ;; We don't need this LDY #&00; it's intended for the following two LDA
+       ;; (zp) instructions which uses to be LDA (zp),Y. We either branch to
+       ;; L98E2 which immediately does LDY #0 or to L89D8. L89D8 either does an
+       ;; LDY or branches to L89EF. L89EF either does an LDY or branches to
+       ;; L8A22, which JSRs to LA744 (which doesn't use Y) before doing an LDY.
+       ;; LDY #&00
        DEC &C0
-       LDA (&C0),Y
+       LDA (&C0)
        STA &B7
        DEC &C0
-       LDA (&C0),Y
+       LDA (&C0)
        STA &B6
 .L9930 
        JSR clc_lda_b6_adc_1a_sta_b6
