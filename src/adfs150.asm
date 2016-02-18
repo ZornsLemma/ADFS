@@ -6415,8 +6415,12 @@ ENDIF
 .LAB5E LDX &C1          ;; Get something
        LDA #&0A         ;; &0A - Write
        JSR LAAD9        ;; Send command block to SCSI/IDE/SD
-       LDY #&00
 IF NOT(PATCH_SD)
+       ;; I'm not sure this LDY #&00 is ever useful, but in the SD case at
+       ;; least, we BRA LAB76 which does JSR MMC_StartWrite which does
+       ;; JSR_MMC_DoCommand which does LDY.
+       LDY #&00
+
        JSR L8332        ;; Wait for SCSI not busy
 ENDIF
 IF PATCH_IDE OR PATCH_SD
