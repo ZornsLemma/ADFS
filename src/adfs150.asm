@@ -3596,14 +3596,19 @@ ENDIF
        LDA &C0
        CMP #&FE
        BEQ L9913
-       LDY #&00
+       ; We don't need this LDY #&00; it's intended for the following two STA
+       ; (zp) instructions which used to be STA (zp),Y. We exit this loop at
+       ; L98CE which does JSR L9486 which does JSR L8875
+       ; which does JSR L8738 which does JSR LA50D which does LDY #&00, so no
+       ; following code relies on our assignment to Y.
+       ; LDY #&00
        LDA &B6
        STA &B4
-       STA (&C0),Y
+       STA (&C0)
        INC &C0
        LDA &B7
        STA &B5
-       STA (&C0),Y
+       STA (&C0)
        INC &C0
        LDX #&02
 .L9908 LDA &C314,X
