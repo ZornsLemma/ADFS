@@ -6075,8 +6075,6 @@ ENDIF
        JSR chunk_59
 .LA80D LDA &C26C,Y
        JSR chunk_60
-       INX
-       DEY
        BPL LA80D
        JMP L82AA
 ;;
@@ -6084,8 +6082,6 @@ ENDIF
        JSR chunk_59
 .LA82E LDA &C270,Y
        JSR chunk_60
-       INX
-       DEY
        BPL LA82E
        JSR L82AA
 .ldx_ldy_l8331_jsr_l82ae
@@ -8974,9 +8970,11 @@ ENDIF
 .chunk_60
        STA &C314,Y
        CPX #&00
-       BEQ chunk_60_rts
+       BEQ chunk_60_dont_sta
        STA &C21A,X
-.chunk_60_rts
+.chunk_60_dont_sta
+       INX
+       DEY
        RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
