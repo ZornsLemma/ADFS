@@ -2797,8 +2797,8 @@ IF PATCH_UNSUPPORTED_OSFILE
        TAX
        TYA
 ELSE
-       LDX #&00         ;;                             CLR &C2D5
-       STX &C2D5        ;;                             ASL A
+       STZ &C2D5        
+                        ;;                             ASL A
        ASL A            ;; Index into dispatch table   TAX
        TAX              ;;                             TYA
 ENDIF
