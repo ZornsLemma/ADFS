@@ -4461,10 +4461,9 @@ ENDIF
 .L9DD0 CMP #&70
        BNE L9DE3
        LDA &C8FA
-       LDY #&00
-       STA (&F0),Y
+       STA (&F0)
        LDA &CD
-       INY
+       LDY #&01
        STA (&F0),Y
        BRA L9DB4
 ;;
