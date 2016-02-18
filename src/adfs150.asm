@@ -1605,9 +1605,7 @@ ENDIF
        BNE L89B4
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L89B4 LDX #&0A
-.L89B6 JSR chunk_16
-
-       BPL L89B6
+       JSR chunk_16
        LDX #&02
        LDY #&16
 .L89C3 JSR chunk_17
@@ -2454,8 +2452,7 @@ ENDIF
 .L8F91 JSR LA714
        JSR L9012
        LDX #&0A
-.L8F99 JSR chunk_16
-       BPL L8F99
+       JSR chunk_16
        LDA #&0A
 
        JSR chunk_3
@@ -3114,8 +3111,7 @@ ENDIF
        BNE L94AF
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L94AF LDX #&0A
-.L94B1 JSR chunk_16
-       BPL L94B1
+       JSR chunk_16
        LDX #&02
        LDY #&16
 .L94BE JSR chunk_17
@@ -4795,6 +4791,7 @@ ENDIF
        LDA L883C,X
        STA &C215,X
        DEX
+       BPL chunk_16
        RTS
 
 .chunk_17
