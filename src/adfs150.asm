@@ -8409,7 +8409,7 @@ IF INCLUDE_FLOPPY
 ;;
 ;; Copy NMI code to NMI space
 ;; --------------------------
-.LBC18 LDY #&44
+.LBC18 LDY #&44		;; TODO: Might be nice to calculate this
 .LBC1A LDA LBCA0,Y
        STA &0D00,Y
        DEY
