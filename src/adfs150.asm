@@ -1613,7 +1613,7 @@ ENDIF
 .L89C3 JSR chunk_17
        BPL L89C3
        JSR L82AA
-       JMP L88FD
+       BRA L88FD
 ;;
 .L897B LDY #&09
        LDA (&B6),Y
@@ -1681,6 +1681,16 @@ ENDIF
        BNE L8964
        RTS
 ;;
+;;
+.LA4BD JSR LA49E
+       JSR LA4B1
+       JSR L93DB
+       BRA L89D8
+;;
+.LA4C9 JSR LA49E
+       JSR LA4B1
+       JSR L943D
+       BRA L89D8
 ;;
 .L89D5 LDA &C2C0
 ;;
@@ -1963,6 +1973,17 @@ ENDIF
        BMI L8BC5
 .L8BD0 LDA #&00
 .L8BD2 RTS
+;;
+;; FSC 10 - *INFO
+;; ==============
+.L94EE JSR L8FE8        ;; Search for object
+       BEQ L94F6
+       BRA L8BD3        ;; Error 'File not found' or 'Bad name'
+;;
+.L94F6 JSR L9508        ;; Call ...
+       JSR L8964
+       BEQ L94F6
+       JMP L89D8
 ;;
 .L8BD3 
        jsr ldy_0_lda_b4_y
@@ -3133,17 +3154,6 @@ ENDIF
        EQUB &00
        EQUB &00
        EQUB &00
-;;
-;; FSC 10 - *INFO
-;; ==============
-.L94EE JSR L8FE8        ;; Search for object
-       BEQ L94F6
-       JMP L8BD3        ;; Error 'File not found' or 'Bad name'
-;;
-.L94F6 JSR L9508        ;; Call ...
-       JSR L8964
-       BEQ L94F6
-       JMP L89D8
 
 .lda_b4_y_and_7f
        LDA (&B4),Y
@@ -4992,6 +5002,68 @@ ENDIF
 .chunk_53_rts
        RTS
        
+.chunk_54
+       CLC              ;; Addr=Addr+&0000FF00
+       ADC &C217        ;; Addr1=Addr1+&FF
+       STA &C217
+       BCC chunk_54_rts ;; No overflow
+       INC &C218        ;; Addr2=Addr2+1
+       BNE chunk_54_rts ;; No overflow
+       INC &C219        ;; Addr3=Addr3+1
+.chunk_54_rts
+       RTS
+
+.chunk_56
+       CLC
+       ADC &C21D        ;; Sector=Sector+&FF
+       STA &C21D        ;; Sector0=Sector0+&FF
+       BCC chunk_56_end ;; No overflow
+       INC &C21C        ;; Sector1=Sector1+1
+       BNE chunk_56_end ;; No overflow
+       INC &C21B        ;; Sector2=Sector2+1
+.chunk_56_end
+       LDA &C221        ;; Update length
+       RTS
+
+.chunk_57
+       JSR chunk_33
+       BEQ chunk_57_lda_d
+       CMP #&21
+       BCS chunk_57_rts
+.chunk_57_lda_d
+       LDA #&0D
+.chunk_57_rts
+       RTS
+
+.chunk_59
+       LDA L883B,X
+       STA &C214,X
+       DEX
+       BNE chunk_59
+       LDY #&03
+       RTS
+
+.chunk_40_sta_c274_y_dey_bpl
+       JSR chunk_40
+       STA &C274,Y
+       DEY
+       BPL chunk_40_sta_c274_y_dey_bpl
+       RTS
+
+.clc_lda_b6_adc_1a_sta_b6
+       CLC
+.lda_b6_adc_1a_sta_b6
+       LDA &B6
+       ADC #&1A
+       STA &B6
+       RTS
+
+.lda_b6_y_ora_80_sta_b6_y
+       LDA (&B6),Y
+       ORA #&80
+       STA (&B6),Y
+       RTS
+
 ;; The next set of strings must not straddle a page boundary
 ;; because code assumes the MSB is constant. See code at
 ;; .L9283 
@@ -5605,16 +5677,6 @@ ENDIF
 .LA4B3 JSR chunk_32
        BPL LA4B3
        RTS
-;;
-.LA4BD JSR LA49E
-       JSR LA4B1
-       JSR L93DB
-       JMP L89D8
-;;
-.LA4C9 JSR LA49E
-       JSR LA4B1
-       JSR L943D
-       JMP L89D8
 ;;
 .LA4D5 LDY #&03
 .LA4D7 LDA &C31C,Y
@@ -8897,60 +8959,6 @@ ENDIF
        LDA #&C2
        STA &B9
        RTS
-	
-.lda_b6_y_ora_80_sta_b6_y
-       LDA (&B6),Y
-       ORA #&80
-       STA (&B6),Y
-       RTS
-
-.clc_lda_b6_adc_1a_sta_b6
-       CLC
-.lda_b6_adc_1a_sta_b6
-       LDA &B6
-       ADC #&1A
-       STA &B6
-       RTS
-
-.chunk_40_sta_c274_y_dey_bpl
-       JSR chunk_40
-       STA &C274,Y
-       DEY
-       BPL chunk_40_sta_c274_y_dey_bpl
-       RTS
-
-.chunk_54
-       CLC              ;; Addr=Addr+&0000FF00
-       ADC &C217        ;; Addr1=Addr1+&FF
-       STA &C217
-       BCC chunk_54_rts ;; No overflow
-       INC &C218        ;; Addr2=Addr2+1
-       BNE chunk_54_rts ;; No overflow
-       INC &C219        ;; Addr3=Addr3+1
-.chunk_54_rts
-       RTS
-
-.chunk_56
-       CLC
-       ADC &C21D        ;; Sector=Sector+&FF
-       STA &C21D        ;; Sector0=Sector0+&FF
-       BCC chunk_56_end ;; No overflow
-       INC &C21C        ;; Sector1=Sector1+1
-       BNE chunk_56_end ;; No overflow
-       INC &C21B        ;; Sector2=Sector2+1
-.chunk_56_end
-       LDA &C221        ;; Update length
-       RTS
-
-.chunk_57
-       JSR chunk_33
-       BEQ chunk_57_lda_d
-       CMP #&21
-       BCS chunk_57_rts
-.chunk_57_lda_d
-       LDA #&0D
-.chunk_57_rts
-       RTS
 
 IF INCLUDE_FLOPPY
 .chunk_58
@@ -8968,14 +8976,6 @@ IF INCLUDE_FLOPPY
        TSB &C2E4
        RTS
 ENDIF
-
-.chunk_59
-       LDA L883B,X
-       STA &C214,X
-       DEX
-       BNE chunk_59
-       LDY #&03
-       RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
 IF PATCH_IDE OR PATCH_SD
