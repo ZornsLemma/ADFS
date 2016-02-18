@@ -6349,12 +6349,21 @@ ELSE
        LDA #&00
        JMP L831E
 ENDIF
+
+.chunk_55
+       ADC &B4
+       STA &B4
+       BCC chunk_55_rts
+       INC &B5
+.chunk_55_rts
+       RTS
+
 ;;
 .LAB03 JSR LACE6        ;; Check checksum
 .LAB06 JSR LABB4        ;; Check for data lost
        LDA &C204,X
        CMP #&C0
-       BCC LAB88
+       BCC chunk_55_rts
        TXA
        LSR A
        LSR A
@@ -6452,7 +6461,7 @@ ELSE
        STY &FC43        ;; Set &FC43 to &FF
 ENDIF
 .LAB86 LDX &C1
-.LAB88 RTS
+       RTS
 ;;
 ;; Service 5 - Interupt occured
 ;; ============================
@@ -8900,14 +8909,6 @@ ENDIF
        BNE chunk_54_rts ;; No overflow
        INC &C219        ;; Addr3=Addr3+1
 .chunk_54_rts
-       RTS
-
-.chunk_55
-       ADC &B4
-       STA &B4
-       BCC chunk_55_rts
-       INC &B5
-.chunk_55_rts
        RTS
 
 .chunk_56
