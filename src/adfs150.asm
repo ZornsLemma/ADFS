@@ -6074,11 +6074,8 @@ ENDIF
        LDX #&0B
        JSR chunk_59
 .LA80D LDA &C26C,Y
-       STA &C314,Y
-       CPX #&00
-       BEQ LA81A
-       STA &C21A,X
-.LA81A INX
+       JSR chunk_60
+       INX
        DEY
        BPL LA80D
        JMP L82AA
@@ -6086,11 +6083,8 @@ ENDIF
 .LA821 LDX #&0B
        JSR chunk_59
 .LA82E LDA &C270,Y
-       STA &C314,Y
-       CPX #&00
-       BEQ LA83B
-       STA &C21A,X
-.LA83B INX
+       JSR chunk_60
+       INX
        DEY
        BPL LA82E
        JSR L82AA
@@ -8976,6 +8970,14 @@ IF INCLUDE_FLOPPY
        TSB &C2E4
        RTS
 ENDIF
+
+.chunk_60
+       STA &C314,Y
+       CPX #&00
+       BEQ chunk_60_rts
+       STA &C21A,X
+.chunk_60_rts
+       RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
 IF PATCH_IDE OR PATCH_SD
