@@ -5036,10 +5036,12 @@ ENDIF
        RTS
 
 .chunk_59
+       LDX #&0B
+.chunk_59_loop
        LDA L883B,X
        STA &C214,X
        DEX
-       BNE chunk_59
+       BNE chunk_59_loop
        LDY #&03
        RTS
 
@@ -6071,15 +6073,13 @@ ENDIF
        STA &B7
        LDA &C293
        STA &B6
-       LDX #&0B
        JSR chunk_59
 .LA80D LDA &C26C,Y
        JSR chunk_60
        BPL LA80D
        JMP L82AA
 ;;
-.LA821 LDX #&0B
-       JSR chunk_59
+.LA821 JSR chunk_59
 .LA82E LDA &C270,Y
        JSR chunk_60
        BPL LA82E
