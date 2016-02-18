@@ -5908,10 +5908,7 @@ ENDIF
        BPL RTS13
 ;;
 .LA6C2 LDY #&02
-.LA6C4 LDA &C314,Y
-       STA &C270,Y
-       DEY
-       BPL LA6C4
+       JSR chunk_62
        LDY #&09
        JSR chunk_40_sta_c274_y_dey_bpl
        LDA #&74
@@ -6118,10 +6115,7 @@ ENDIF
 .LA89B JSR L9486
        JSR L8FF3
        LDY #&03
-.LA8A3 LDA &C314,Y
-       STA &C270,Y
-       DEY
-       BPL LA8A3
+       JSR chunk_62
        JSR LA7EC
 .LA8AF JSR chunk_26
        DEY
@@ -8968,6 +8962,14 @@ ENDIF
        DEY
        DEX
        BPL chunk_61_loop
+       RTS
+
+.chunk_62
+.chunk_62_loop
+       LDA &C314,Y
+       STA &C270,Y
+       DEY
+       BPL chunk_62_loop
        RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
