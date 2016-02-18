@@ -5696,6 +5696,7 @@ ENDIF
        STA &C300,Y
        DEY
        BPL LA4EB
+.RTS24
        RTS
 ;;
 .LA4F5 LDY #&00
@@ -5729,17 +5730,13 @@ ENDIF
 .LA528 TYA
        PLP
        CLC
-       ADC &B4
-       STA &B4
-       BCC LA533
-       INC &B5
-.LA533 RTS
+       JMP chunk_55
 ;;
 .LA534 
        jsr ldy_0_lda_b4_y
        AND #&7F
        CMP #&3A
-       BNE LA533
+       BNE RTS24
 .LA53E JMP L8988
 ;;
 .LA541 LDA &B4
