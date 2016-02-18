@@ -4719,10 +4719,9 @@ ENDIF
        RTS
 
 .chunk_5
-       LDY #&00         ;; Copy filename address again
-       LDA (&B8),Y
+       LDA (&B8)        ;; Copy filename address again 
        STA &B4
-       INY
+       LDY #&01
        LDA (&B8),Y
        STA &B5
        RTS
