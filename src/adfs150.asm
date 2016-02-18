@@ -8185,8 +8185,6 @@ IF INCLUDE_FLOPPY
        BNE LBA95
        PLA
        JSR chunk_58
-       STA &0D5E
-       JSR chunk_50
        LDA &C201,X
        PHA
        LDA &C202,X
@@ -8758,8 +8756,6 @@ IF INCLUDE_FLOPPY
 ;; -------------
 .LBF24 LDA &A6          ;; Get drive
        JSR chunk_58
-       STA &0D5E        ;; Store drive control byte
-       JSR chunk_50
        JSR LBF5E        ;; Calculate sector/track
        JSR chunk_36
        ROR A            ;; Rotate drive 1 bit into carry
@@ -8903,13 +8899,6 @@ ENDIF
        BPL chunk_40_sta_c274_y_dey_bpl
        RTS
 
-IF INCLUDE_FLOPPY
-.chunk_50
-       LDA #&01
-       TSB &C2E4
-       RTS
-ENDIF
-
 .chunk_54
        CLC              ;; Addr=Addr+&0000FF00
        ADC &C217        ;; Addr1=Addr1+&FF
@@ -8956,10 +8945,15 @@ IF INCLUDE_FLOPPY
        AND #&20
        BNE chunk_58_lda
        LDA #&05
-       BNE chunk_58_rts
+       BNE chunk_58_dont_lda
 .chunk_58_lda
        LDA #&06
-.chunk_58_rts
+.chunk_58_dont_lda
+       STA &0D5E        ;; Store drive control byte
+       ;; fall through to chunk_50
+.chunk_50
+       LDA #&01
+       TSB &C2E4
        RTS
 ENDIF
 
