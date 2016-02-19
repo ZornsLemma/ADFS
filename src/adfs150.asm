@@ -2999,7 +2999,14 @@ ENDIF
        JSR L928F
        JSR L92A8
        EQUB &0D,&8D
-.L93CC JMP chunk_42
+.L93CC 
+.chunk_42
+       LDA #&05
+       STA &B6
+       LDA #&C4
+       STA &B7
+       RTS
+
 ;;
 ;; FSC 5 - *CAT
 ;; ============
@@ -4898,13 +4905,6 @@ ENDIF
        AND #&7F
        RTS
 
-.chunk_42
-       LDA #&05
-       STA &B6
-       LDA #&C4
-       STA &B7
-       RTS
-
 .chunk_43
        LDA (&B4),Y      ;; Get current character
        CMP #&20         ;; Is it a space?
@@ -5074,6 +5074,16 @@ ENDIF
 .chunk_60_dont_sta
        INX
        DEY
+       RTS
+
+.chunk_61
+       LDX #&03
+.chunk_61_loop
+       LDA &C215,X
+       STA (&B6),Y
+       DEY
+       DEX
+       BPL chunk_61_loop
        RTS
 
 ;; The next set of strings must not straddle a page boundary
@@ -8944,16 +8954,6 @@ IF INCLUDE_FLOPPY
        TSB &C2E4
        RTS
 ENDIF
-
-.chunk_61
-       LDX #&03
-.chunk_61_loop
-       LDA &C215,X
-       STA (&B6),Y
-       DEY
-       DEX
-       BPL chunk_61_loop
-       RTS
 
 .chunk_62
 .chunk_62_loop
