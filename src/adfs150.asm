@@ -2262,7 +2262,27 @@ ENDIF
 ;;
 .L8DFE JSR L8CF4
 .L8E01 BNE L8E24
-       JMP chunk_30
+;; fall through to chunk_30
+.chunk_30
+       LDX #&02
+       JSR chunk_29
+.chunk_30_loop1
+       INY
+       LDA #&00
+       ADC (&B6),Y
+       STA &C224,Y
+       DEX
+       BPL chunk_30_loop1
+       LDY #&18
+       LDX #&02
+.chunk_30_loop2
+       LDA (&B6),Y
+       STA &C234,X
+       DEY
+       DEX
+       BPL chunk_30_loop2
+       RTS
+
 ;;
 .L8E24 LDA &C8B1
        BEQ L8E36
@@ -4837,26 +4857,6 @@ ENDIF
        LDY #&12
        LDA (&B6),Y
        CMP #&01
-       RTS
-
-.chunk_30
-       LDX #&02
-       JSR chunk_29
-.chunk_30_loop1
-       INY
-       LDA #&00
-       ADC (&B6),Y
-       STA &C224,Y
-       DEX
-       BPL chunk_30_loop1
-       LDY #&18
-       LDX #&02
-.chunk_30_loop2
-       LDA (&B6),Y
-       STA &C234,X
-       DEY
-       DEX
-       BPL chunk_30_loop2
        RTS
 
 .chunk_31
