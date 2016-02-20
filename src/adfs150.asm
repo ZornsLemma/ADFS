@@ -8419,7 +8419,7 @@ IF INCLUDE_FLOPPY
 ;;
 ;; Copy NMI code to NMI space
 ;; --------------------------
-.LBC18 LDY #&44		;; TODO: Might be nice to calculate this
+.LBC18 LDY #nmi_handler_size-1
 .LBC1A LDA LBCA0,Y
        STA &0D00,Y
        DEY
@@ -8510,6 +8510,7 @@ IF INCLUDE_FLOPPY
 ;;
 ;; NMI code, copied to &0D00
 ;; -------------------------
+.nmi_handler_start
 .LBCA0 PHA
        LDA &FE28        ;; FDC Status/Command
        AND #&1F
@@ -8537,8 +8538,9 @@ IF INCLUDE_FLOPPY
        BVC LBCC4
        LDA &F4
        PHA
-       STZ &F4
-       STZ &FE30
+       LDA #&00		;; replaced with actual ROM number
+       STA &F4
+       STA &FE30
        PHX
        JSR LBE77
        PLX
@@ -8547,6 +8549,16 @@ IF INCLUDE_FLOPPY
        STA &FE30
        PLA
        RTI
+.nmi_handler_end
+nmi_handler_size = nmi_handler_end - nmi_handler_start
+if nmi_handler_size != &44
+	print nmi_handler_size
+	;; This is sort of OK, but for now let's treat it as an error.
+	;error "NMI handler has changed size"
+endif
+if nmi_handler_size >= 128
+	error "NMI handler too large"
+endif
 ;;
 .LBCE5 LDA &A2
        ROR A
