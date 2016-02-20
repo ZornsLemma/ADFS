@@ -8247,14 +8247,14 @@ IF INCLUDE_FLOPPY
        BIT &A1
        BMI LBA83
        LDA &BC
-       STA &0D0B
+       STA &0D00+(nmi_lda_abs+1-nmi_handler_start)
        LDA &BD
-       STA &0D0C
+       STA &0D00+(nmi_lda_abs+2-nmi_handler_start)
        BNE LBA8D
 .LBA83 LDA &BE
-       STA &0D0E
+       STA &0D00+(nmi_sta_abs+1-nmi_handler_start)
        LDA &BF
-       STA &0D0F
+       STA &0D00+(nmi_sta_abs+2-nmi_handler_start)
 .LBA8D LDA &C203,X
        PHA
        AND #&1F
@@ -8426,14 +8426,14 @@ IF INCLUDE_FLOPPY
        BPL LBC1A
        LDY #&01
        LDA (&B0),Y
-       STA &0D0E
+       STA &0D00+(nmi_sta_abs+1-nmi_handler_start)
        INY
        LDA (&B0),Y
-       STA &0D0F
+       STA &0D00+(nmi_sta_abs+2-nmi_handler_start)
        BIT &A1
        BMI LBC39
        LDA #&5F
-       STA &0D05
+       STA &0D00+(nmi_and_imm+1-nmi_handler_start)
 .LBC39 BIT &CD
        BVC LBC48
        LDA &A1
@@ -8444,7 +8444,7 @@ IF INCLUDE_FLOPPY
 .LBC48 JSR LBC83
 .LBC4B STA &0D5F
        LDA &F4
-       STA &0D32
+       STA &0D00+(nmi_lda_imm_rom_bank+1-nmi_handler_start)
        RTS
        			;; SAVING: 1 byte
 ;;
@@ -8513,14 +8513,17 @@ IF INCLUDE_FLOPPY
 .nmi_handler_start
 .LBCA0 PHA
        LDA &FE28        ;; FDC Status/Command
+.nmi_and_imm
        AND #&1F
        CMP #&03
        BNE LBCBA
+.nmi_lda_abs
        LDA &FE2B        ;; FDC Data
+.nmi_sta_abs
        STA &FFFF        ;; Replaced with destination address
-       INC &0D0E
+       INC &0D00+(nmi_sta_abs+1-nmi_handler_start)
        BNE LBCB8
-       INC &0D0F
+       INC &0D00+(nmi_sta_abs+2-nmi_handler_start)
 .LBCB8 PLA
        RTI
 ;;
@@ -8538,7 +8541,8 @@ IF INCLUDE_FLOPPY
        BVC LBCC4
        LDA &F4
        PHA
-       LDA #&00		;; replaced with actual ROM number
+.nmi_lda_imm_rom_bank
+       LDA #&00		;; replaced with actual ROM bank
        STA &F4
        STA &FE30
        PHX
@@ -8551,12 +8555,12 @@ IF INCLUDE_FLOPPY
        RTI
 .nmi_handler_end
 nmi_handler_size = nmi_handler_end - nmi_handler_start
-if nmi_handler_size != &44
-	print nmi_handler_size
+if nmi_handler_size != &45
 	;; This is sort of OK, but for now let's treat it as an error.
-	;error "NMI handler has changed size"
+	error "NMI handler has changed size"
 endif
-if nmi_handler_size >= 128
+if &0D00 + nmi_handler_size - 1 >= &0D56
+	;; &0D56 onwards is used for data storage
 	error "NMI handler too large"
 endif
 ;;
