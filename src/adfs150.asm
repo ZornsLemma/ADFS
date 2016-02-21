@@ -302,6 +302,7 @@ ENDIF
 	STA &B1,Y
 	CPY #2:BNE loop
 }
+       INY
        LDA (&B0),Y      ;; Get Addr2
        CMP #&FE
        BCC L8134        ;; Addr<&FFFE0000, language space
