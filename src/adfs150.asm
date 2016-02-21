@@ -713,6 +713,7 @@ ELSE
        PHP
        LDA #&06
        JSR L8212
+       ;; TODO: Are these NOPs valuable? (Maybe check ADFS 1.40...)
 .L8233 NOP
        NOP
        NOP
@@ -727,6 +728,7 @@ ELSE
 .L8245 PHP
        LDA #&07
        JSR L8212
+       ;; TODO: Are these NOPs valuable? (Maybe check ADFS 1.40...)
 .L824B NOP
        NOP
        NOP
