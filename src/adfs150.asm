@@ -687,7 +687,10 @@ ELSE
        PHP
        LDA #&06
        JSR L8212
-.L8233 LDA &FEE5        ;; Get byte from Tube
+.L8233 NOP
+       NOP
+       NOP
+       LDA &FEE5        ;; Get byte from Tube
        STA &FC40        ;; Write byte to SCSI data port
        INY
        BNE L8233
@@ -698,7 +701,10 @@ ELSE
 .L8245 PHP
        LDA #&07
        JSR L8212
-.L824B LDA &FC40        ;; Get byte from SCSI data port
+.L824B NOP
+       NOP
+       NOP
+       LDA &FC40        ;; Get byte from SCSI data port
        STA &FEE5        ;; Write to Tube
        INY
        BNE L824B
@@ -806,9 +812,12 @@ ENDIF
        EQUB &00
 ;;
 IF NOT(PATCH_SD)        ;; Called only from Floppy and IDE code, not SD code
-.L831E JSR L833E	;; Wait until nor busy, then write command to command register
+.L831E JSR L8324	;; Wait until nor busy, then write command to command register
        BNE L82BD        ;; Generate disk error
 .RTS2
+       RTS
+
+.L8324 JSR L833E        ;; Wait until nor busy, then write command to command register
        RTS
 ENDIF
 ;;
