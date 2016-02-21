@@ -5648,8 +5648,9 @@ ENDIF
        JSR chunk_26
        ;; We don't need this LDY #&00 now we have ORA (&B6) not ORA (&B6),Y.
        ;; LA45C does JSR L8C1B which immediately does LDY. L8BFB does JSR L836B
-       ;; which does JSR L89D8 and we established (see comment near L9913) that 
-       ;; this will LDY.
+       ;; which does JSR L89D8. L89D8 will either LDY inside
+       ;; ldx_ldy_l8331_jsr_l82ae, or it will hit L89EF from where it will LDY
+       ;; #&0A or hit L8A22 which will LDY.
        ;; LDY #&00
        ORA (&B6)
        BMI LA45C
