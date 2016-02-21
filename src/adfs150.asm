@@ -5105,6 +5105,9 @@ IF  ((P% AND &FF) > &B1)
        \ this - if it happens, we should shuffle some code into the dead
        \ space, e.g. one of the little three or four instruction
        \ subroutines.
+       \ TODO: We should probably bundle up a &4F-byte-sized batch of the
+       \ immediately preceding chunks, put them in a macro and conditionally
+       \ assemble them before or after this test, so it should never fire.
        \ TODO: Temporarily disabling this error ERROR "Dead space"
        ORG ((P% + &FF) AND &FF00) 
 ENDIF
