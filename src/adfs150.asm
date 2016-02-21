@@ -16,6 +16,16 @@ MACRO xBRA_OR_JMP target
     ENDIF
 ENDMACRO
 
+IF SMALL_CODE
+       MACRO xJMP_OR_JSR target
+	      JMP target
+       ENDMACRO
+ELSE
+       MACRO xJMP_OR_JSR target
+	      JSR target
+       ENDMACRO
+ENDIF
+
 MACRO chunk_1_body
        LDA &00,X
        STA &C29A
@@ -52,6 +62,23 @@ MACRO chunk_3_body
        STA &C21B
 ENDMACRO
 
+MACRO chunk_5_body
+       LDA (&B8)        ;; Copy filename address again 
+       STA &B4
+       LDY #&01
+       LDA (&B8),Y
+       STA &B5
+ENDMACRO
+
+MACRO chunk_6_body
+       STA &C298
+       LDA #&02
+       CMP &C2B4
+       LDA #&80
+       ROR A
+       xJMP_OR_JSR LABE7
+ENDMACRO
+
 IF SMALL_CODE
        MACRO chunk_1
 	      jsr chunk_1_subroutine
@@ -64,6 +91,14 @@ IF SMALL_CODE
        MACRO chunk_3
 	      jsr chunk_3_subroutine
        ENDMACRO
+
+       MACRO chunk_5
+	      jsr chunk_5_subroutine
+       ENDMACRO
+
+       MACRO chunk_6
+	      jsr chunk_6_subroutine
+       ENDMACRO
 ELSE
        MACRO chunk_1
 	      chunk_1_body
@@ -75,6 +110,14 @@ ELSE
 
        MACRO chunk_3
 	      chunk_3_body
+       ENDMACRO
+
+       MACRO chunk_5
+	      chunk_5_body
+       ENDMACRO
+
+       MACRO chunk_6
+	      chunk_6_body
        ENDMACRO
 ENDIF
 
@@ -2207,9 +2250,7 @@ ENDIF
 ;; &B8/9=>control block, &B4/5=>filename
 ;;
 .L8CB3 
-
-       JSR chunk_5
-
+       chunk_5
        JSR L8FE8        ;; Search for object
        BNE L8CD1
        JSR chunk_26
@@ -2224,9 +2265,7 @@ ENDIF
 .L8CCE JSR L8C70
 .L8CD1 JMP L89D5
 ;;
-.L8CD4 
-
-       JSR chunk_5
+.L8CD4 chunk_5
        JSR L8DC8
        JSR L8FE8
        BEQ L8CEC
@@ -2903,9 +2942,7 @@ ENDIF
        LDA L9271,X
        PHA
        PHY              ;; Stack function
-
-       JSR chunk_5
-
+       chunk_5
        PLA              ;; Get function to A
 .L9270 RTS              ;; Jump to subroutine
 ;;
@@ -4774,23 +4811,14 @@ IF SMALL_CODE
 .chunk_3_subroutine
        chunk_3_body
        RTS
-ENDIF
 
-.chunk_5
-       LDA (&B8)        ;; Copy filename address again 
-       STA &B4
-       LDY #&01
-       LDA (&B8),Y
-       STA &B5
+.chunk_5_subroutine
+       chunk_5_body
        RTS
 
-.chunk_6
-       STA &C298
-       LDA #&02
-       CMP &C2B4
-       LDA #&80
-       ROR A
-       JMP LABE7
+.chunk_6_subroutine
+       chunk_6_body
+ENDIF
 
 .chunk_7
        LDA &C2BA
@@ -7926,7 +7954,11 @@ ENDIF
        BPL LB703
        LDA &C8
        BNE LB715
-       BRA LB7A5
+       IF SMALL_CODE
+	      BRA LB7A5
+       ELSE
+	      JMP LB7A5
+       ENDIF
 ;;
 .LB715 LDX &CF
        CLC
@@ -7936,9 +7968,7 @@ ENDIF
        ADC &CA
        JSR chunk_49
        ADC &CB
-
-       JSR chunk_6
-
+       chunk_6
        LDA &C8
        STA &C2B6
        STZ &C2B7
@@ -8047,9 +8077,7 @@ ENDIF
        ADC &C29C
        JSR chunk_49
        ADC &C29D
-
-       JSR chunk_6
-
+       chunk_6
        STZ &C2B6
        JSR chunk_35
        JMP LB758
