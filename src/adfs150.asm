@@ -100,6 +100,9 @@ ENDIF
 ;;
 ;; Read hard drive status. Waits for status value to settle before returning
 ;; -------------------------------------------------------------------------
+;; TODO: dp11 has a proposed optimisation here (post Sun Feb 21, 2016 9:38 pm)
+;; but waiting for confirmation it's safe, as it alters code accessing memory-
+;; mapped hardware.
 IF PATCH_SD
 ;; Drive status is not used in the SD Code
 ELIF PATCH_IDE
@@ -4922,11 +4925,6 @@ ENDIF
        CMP #&20
        RTS
 
-.chunk_47
-       JSR LB86B
-       LDA #&01
-       JMP LB8A5
-
 .chunk_48
        STA &C296
        LDA &C3C0,X
@@ -8042,6 +8040,10 @@ ENDIF
        STA &B3
        RTS
 ;;
+.chunk_47
+       JSR LB86B
+       LDA #&01
+       ;; fall through to LB8A5
 .LB8A5 BIT &CD
        BVC LB8AD
        STA &FEE5
