@@ -8092,18 +8092,15 @@ ENDIF
 .LB925 JSR L803A
        JMP LB75E
 ;;
-.lda_c3_sta_b5_jsr_lb8bc_bmi_lb925
+.LB92B JSR chunk_47
+       LDA &C317
+       JSR LB946
+       LDA #&00
+       STA &B4
        LDA #&C3
        STA &B5
        JSR LB8BC
        BMI LB925
-       RTS
-
-.LB92B JSR chunk_47
-       LDA &C317
-       JSR LB946
-       STZ &B4
-       JSR lda_c3_sta_b5_jsr_lb8bc_bmi_lb925
 .LB946 ASL A
        ROL A
        ROL A
@@ -8116,7 +8113,10 @@ ENDIF
        JSR LB946
        LDA #&0A
        STA &B4
-       JSR lda_c3_sta_b5_jsr_lb8bc_bmi_lb925
+       LDA #&C3
+       STA &B5
+       JSR LB8BC
+       BMI LB925
 .LB96A JSR LB86B
        STZ &C2B5
        LDA &C8FA
