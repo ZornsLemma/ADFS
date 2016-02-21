@@ -1621,10 +1621,7 @@ ENDIF
        BNE L89B4
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L89B4 JSR chunk_16
-       LDX #&02
-       LDY #&16
-.L89C3 JSR chunk_17
-       BPL L89C3
+       JSR chunk_17
        JSR L82AA
        BRA L88FD
 ;;
@@ -3121,10 +3118,7 @@ ENDIF
        BNE L94AF
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L94AF JSR chunk_16
-       LDX #&02
-       LDY #&16
-.L94BE JSR chunk_17
-       BPL L94BE
+       JSR chunk_17
        LDA &B7
        CMP #&94
        BEQ RTS9
@@ -4804,11 +4798,15 @@ ENDIF
        RTS
 
 .chunk_17
+       LDX #&02
+       LDY #&16
+.chunk_17_loop
        LDA (&B6),Y
        STA &C21B,X
        STA &C2FE,Y
        INY
        DEX
+       BPL chunk_17_loop
        RTS
 
 .chunk_18
@@ -8997,3 +8995,5 @@ ENDIF
 PRINT "    code ends at",~P%," (",(&C000 - P%), "bytes free )"
 
 SAVE "", &8000, &C000
+
+;; vi: sts=7 sw=7
