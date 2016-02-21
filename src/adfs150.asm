@@ -1,13 +1,38 @@
-ORG &8000
-CPU 1
-
-
 ;;                     ACORN ADFS 1.50 ROM DISASSEMBLY
 ;;                     ===============================
 ;;                   ADFS CODE COPYRIGHT ACORN COMPUTERS
 ;;
 ;;               DISASSEMBLY COMMENTARY COPYRIGHT J.G.HARSTON
 ;;               ============================================
+
+ORG &8000
+CPU 1
+
+MACRO chunk_1_body
+       LDA &00,X
+       STA &C29A
+       LDA &01,X
+       STA &C29B
+       LDA &02,X
+       STA &C29C
+       LDA &03,X
+       STA &C29D
+       JSR LAE68
+       LDX &C3
+       LDY &CF
+       LDA &00,X
+ENDMACRO
+
+IF SMALL_CODE
+	MACRO chunk_1
+		jsr chunk_1_subroutine
+	ENDMACRO
+ELSE
+	MACRO chunk_1
+		chunk_1_body
+	ENDMACRO
+ENDIF
+
 ;;
 ;; ROM HEADER
 ;; ==========
@@ -4694,20 +4719,11 @@ ENDIF
        EQUS "TITLE", >(LA292-1), <(LA292-1), &70
        EQUS >(LA3DB-1), <(LA3DB-1)
 
-.chunk_1
-       LDA &00,X
-       STA &C29A
-       LDA &01,X
-       STA &C29B
-       LDA &02,X
-       STA &C29C
-       LDA &03,X
-       STA &C29D
-       JSR LAE68
-       LDX &C3
-       LDY &CF
-       LDA &00,X
-       RTS
+IF SMALL_CODE
+.chunk_1_subroutine
+	chunk_1_body
+	RTS
+ENDIF
 
 .chunk_2
        CLC
@@ -6304,8 +6320,7 @@ ENDIF
       
 
 .LA9E2 LDX &C3
-
-       JSR chunk_1
+       chunk_1
 
 .chunk_4
        STA &C37A,Y
@@ -6352,7 +6367,11 @@ ENDIF
        STA &02,X
        LDA &C334,Y
        STA &03,X
+IF SMALL_CODE
 .LAA72 BRA LA9D0
+ELSE
+.LAA72 JMP LA9D0
+ENDIF
 ;;
 ;; OSARGS 3,Y - Write EXT
 ;; ----------------------
@@ -6363,8 +6382,7 @@ ENDIF
        BMI LAA82
        JMP LB0FA
 ;;
-.LAA82 JSR chunk_1
-
+.LAA82 chunk_1
        STA &C352,Y
        LDA &01,X
        STA &C348,Y
