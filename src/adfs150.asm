@@ -3622,10 +3622,8 @@ ENDIF
        STA &B5
        JSR L9486
        ;; We don't need this LDY #&00; it's intended for the following two LDA
-       ;; (zp) instructions which uses to be LDA (zp),Y. We either branch to
-       ;; L98E2 which immediately does LDY #0 or to L89D8. L89D8 either does an
-       ;; LDY or branches to L89EF. L89EF either does an LDY or branches to
-       ;; L8A22, which JSRs to LA744 (which doesn't use Y) before doing an LDY.
+       ;; (zp) instructions which uses to be LDA (zp),Y. We branch to
+       ;; L98E2 which immediately does LDY #0.
        ;; LDY #&00
        DEC &C0
        LDA (&C0)
