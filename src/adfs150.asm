@@ -6063,6 +6063,7 @@ ENDIF
        STA &0101,X
        LDA #>(LA7D4-1)
        STA &0102,X      ;; Force return address to LA7D4
+.unstack_rts
        PLX
        PLY
        PLA
@@ -6086,11 +6087,7 @@ ENDIF
        STZ &C2CE
        STZ &C2D5
        STZ &C2D9
-       PLX
-       PLY
-       PLA
-       PLP
-       RTS
+       bra unstack_rts
 ;;
 .LA7EC LDA &C291
        STA &B4
