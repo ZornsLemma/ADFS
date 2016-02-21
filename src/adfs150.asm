@@ -379,10 +379,12 @@ ELIF PATCH_IDE
 .TransTube
        BCC TubeRead
 .TubeWrite
-       JSR chunk_20
+       LDA &FEE5        ;; Get byte from Tube
+       STA &FC40        ;; Write byte to SCSI data port
        BRA TransferByte
 .TubeRead
-       JSR chunk_21
+       LDA &FC40        ;; Get byte from SCSI data port
+       STA &FEE5        ;; Write to Tube
        BRA TransferByte
 .CommandDone
        JSR GetResult    ;; Get IDE result
@@ -502,10 +504,12 @@ ELSE
        BRA L817C        ;; Loop for next 256 bytes
 ;;
 .L819B BCS L81A5        ;; Jump for Tube read
-       JSR chunk_20
+       LDA &FEE5        ;; Get byte from Tube
+       STA &FC40        ;; Write byte to SCSI data port
        BRA L817C        ;; Loop for next byte
 ;;
-.L81A5 JSR chunk_21
+.L81A5 LDA &FC40        ;; Get byte from SCSI data port
+       STA &FEE5        ;; Write to Tube
        BRA L817C        ;; Loop for next byte
 ;;
 .L81AD JSR L803A        ;; Release Tube and restore screen
@@ -524,7 +528,7 @@ ELSE
 .L81CA TAX              ;; Save result in X
        AND #&02         ;; Check b1
        BEQ L81D2        ;; If b1=0, return with &00
-       BRA L825D        ;; Get status from SCSI and return it
+       JMP L825D        ;; Get status from SCSI and return it
 ;;
 .L81D2 LDA #&00         ;; A=0 - OK
 .L81D4 LDX &B0          ;; Restore XY pointer
@@ -683,7 +687,8 @@ ELSE
        PHP
        LDA #&06
        JSR L8212
-.L8233 JSR chunk_20
+.L8233 LDA &FEE5        ;; Get byte from Tube
+       STA &FC40        ;; Write byte to SCSI data port
        INY
        BNE L8233
        JSR L8200
@@ -693,7 +698,8 @@ ELSE
 .L8245 PHP
        LDA #&07
        JSR L8212
-.L824B JSR chunk_21
+.L824B LDA &FC40        ;; Get byte from SCSI data port
+       STA &FEE5        ;; Write to Tube
        INY
        BNE L824B
        JSR L8200
@@ -4809,16 +4815,6 @@ ENDIF
        ROL &C204,X
        RTS
 
-.chunk_20
-       LDA &FEE5        ;; Get byte from Tube
-       STA &FC40        ;; Write byte to SCSI data port
-       RTS
-
-.chunk_21
-       LDA &FC40        ;; Get byte from SCSI data port
-       STA &FEE5        ;; Write to Tube
-       RTS
-
 .chunk_22
        LDA &C22F
        STA &C317
@@ -5082,6 +5078,14 @@ ENDIF
        DEY
        DEX
        BPL chunk_61_loop
+       RTS
+
+.chunk_62
+.chunk_62_loop
+       LDA &C314,Y
+       STA &C270,Y
+       DEY
+       BPL chunk_62_loop
        RTS
 
 ;; The next set of strings must not straddle a page boundary
@@ -8969,14 +8973,6 @@ IF INCLUDE_FLOPPY
        TSB &C2E4
        RTS
 ENDIF
-
-.chunk_62
-.chunk_62_loop
-       LDA &C314,Y
-       STA &C270,Y
-       DEY
-       BPL chunk_62_loop
-       RTS
 
 ;; This is cludge, need to check this is really not used in IDE Mode
 IF PATCH_IDE OR PATCH_SD
