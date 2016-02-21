@@ -8874,8 +8874,8 @@ endif
        BCC LBF50        ;; Jump if drive 0
        LDA &C2E5
        JSR chunk_37
-       BPL LBF09
        BMI LBF5A
+       RTS
 ;;
 .LBF50 LDA &C2E6
        JSR chunk_37
