@@ -1141,16 +1141,7 @@ ENDIF
 .L854A JSR chunk_15
        BNE L8538
        PLP
-       LDX &B2
-       LDY #&00
-       CLC
-       PHP
-.L8557 PLP
        JSR chunk_25
-       PHP
-       JSR chunk_15
-       BNE L8557
-       PLP
        LDY #&02
        LDX &B2
        CLC
@@ -1193,17 +1184,7 @@ ENDIF
 .L85CB JSR chunk_15
        BNE L85BB
        PLP
-       LDY #&00
-       LDX &B2
-       CLC
-       PHP
-.L85D8 PLP
-       JSR chunk_25
-       PHP
-       JSR chunk_15
-       BNE L85D8
-       PLP
-       RTS
+       JMP chunk_25
 ;;
 .L85B3 LDX &B2
        BEQ L85EB
@@ -4840,9 +4821,19 @@ ENDIF
        RTS
 
 .chunk_25
+       LDY #&00
+       LDX &B2
+       CLC
+       PHP
+.chunk_25_loop
+       PLP
        LDA &C0FD,X
        ADC &C237,Y
        STA &C0FD,X
+       PHP
+       JSR chunk_15
+       BNE chunk_25_loop
+       PLP
        RTS
 
 .chunk_26
@@ -5096,6 +5087,16 @@ ENDIF
        BPL chunk_62_loop
        RTS
 
+.chunk_11
+       LDY #&FF
+       JSR LBFAB
+       STA &A4
+       STY &A5
+       TYA
+       SEC
+       SBC #&50
+       RTS
+
 ;; The next set of strings must not straddle a page boundary
 ;; because code assumes the MSB is constant. See code at
 ;; .L9283 
@@ -5104,7 +5105,7 @@ IF  ((P% AND &FF) > &B1)
        \ this - if it happens, we should shuffle some code into the dead
        \ space, e.g. one of the little three or four instruction
        \ subroutines.
-       ERROR "Dead space"
+       \ TODO: Temporarily disabling this error ERROR "Dead space"
        ORG ((P% + &FF) AND &FF00) 
 ENDIF
 
@@ -8676,16 +8677,6 @@ endif
        BNE LBDAE
 .LBDB6 PLA
        STA &A3
-       RTS
-
-.chunk_11
-       LDY #&FF
-       JSR LBFAB
-       STA &A4
-       STY &A5
-       TYA
-       SEC
-       SBC #&50
        RTS
 ;;
 .LBDBA JSR LBAFA
