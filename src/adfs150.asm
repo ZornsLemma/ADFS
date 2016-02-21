@@ -8958,7 +8958,7 @@ IF INCLUDE_FLOPPY
        AND #&20
        BNE chunk_58_lda
        LDA #&05
-       BNE chunk_58_dont_lda
+       BNE chunk_58_dont_lda	;; TODO: This will always branch?!
 .chunk_58_lda
        LDA #&06
 .chunk_58_dont_lda
