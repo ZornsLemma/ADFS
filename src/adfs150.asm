@@ -8,6 +8,14 @@
 ORG &8000
 CPU 1
 
+MACRO xBRA_OR_JMP target
+    IF (((target - (P% + 2)) >= -128) AND ((target - (P% + 2)) <= 127))
+        BRA target
+    ELSE
+        JMP target
+    ENDIF
+ENDMACRO
+
 MACRO chunk_1_body
        LDA &00,X
        STA &C29A
@@ -23,14 +31,51 @@ MACRO chunk_1_body
        LDA &00,X
 ENDMACRO
 
+MACRO chunk_2_body
+       CLC
+       LDA &C3CA,X
+       ADC &C370,X
+       JSR chunk_48
+       ADC &C366,X
+       JSR chunk_49
+       ADC &C35C,X
+       STA &C298        ;; &C296/7/8=&C3CA/B/C,X+&C370/1/2,X
+ENDMACRO
+
+MACRO chunk_3_body
+       STA &C21A
+       LDA &C314
+       STA &C21D
+       LDA &C315
+       STA &C21C
+       LDA &C316
+       STA &C21B
+ENDMACRO
+
 IF SMALL_CODE
-	MACRO chunk_1
-		jsr chunk_1_subroutine
-	ENDMACRO
+       MACRO chunk_1
+	      jsr chunk_1_subroutine
+       ENDMACRO
+
+       MACRO chunk_2
+	      jsr chunk_2_subroutine
+       ENDMACRO
+
+       MACRO chunk_3
+	      jsr chunk_3_subroutine
+       ENDMACRO
 ELSE
-	MACRO chunk_1
-		chunk_1_body
-	ENDMACRO
+       MACRO chunk_1
+	      chunk_1_body
+       ENDMACRO
+
+       MACRO chunk_2
+	      chunk_2_body
+       ENDMACRO
+
+       MACRO chunk_3
+	      chunk_3_body
+       ENDMACRO
 ENDIF
 
 ;;
@@ -2504,9 +2549,7 @@ ENDIF
        JSR L9012
        JSR chunk_16
        LDA #&0A
-
-       JSR chunk_3
-
+       chunk_3
        JSR L82AA
        JSR chunk_12
        LDA &C1FC
@@ -3478,9 +3521,7 @@ ENDIF
 .L978A LDA #&C4
        STA &C217
        LDA #&08
-
-       JSR chunk_3
-
+       chunk_3
        LDA #&05
        STA &C21E
        JMP L82AE
@@ -4723,30 +4764,17 @@ ENDIF
 
 IF SMALL_CODE
 .chunk_1_subroutine
-	chunk_1_body
-	RTS
+       chunk_1_body
+       RTS
+
+.chunk_2_subroutine
+       chunk_2_body
+       RTS
+
+.chunk_3_subroutine
+       chunk_3_body
+       RTS
 ENDIF
-
-.chunk_2
-       CLC
-       LDA &C3CA,X
-       ADC &C370,X
-       JSR chunk_48
-       ADC &C366,X
-       JSR chunk_49
-       ADC &C35C,X
-       STA &C298        ;; &C296/7/8=&C3CA/B/C,X+&C370/1/2,X
-       RTS
-
-.chunk_3
-       STA &C21A
-       LDA &C314
-       STA &C21D
-       LDA &C315
-       STA &C21C
-       LDA &C316
-       STA &C21B
-       RTS
 
 .chunk_5
        LDA (&B8)        ;; Copy filename address again 
@@ -6369,11 +6397,7 @@ ENDIF
        STA &02,X
        LDA &C334,Y
        STA &03,X
-IF SMALL_CODE
-.LAA72 BRA LA9D0
-ELSE
-.LAA72 JMP LA9D0
-ENDIF
+.LAA72 xBRA_OR_JMP LA9D0
 ;;
 ;; OSARGS 3,Y - Write EXT
 ;; ----------------------
@@ -6887,9 +6911,7 @@ ENDIF
 ;; Read byte from channel
 ;; ----------------------
 .LAD9C LDX &CF          ;; Get channel offset
-
-       JSR chunk_2
-
+       chunk_2
        LDA #&40
        JSR chunk_44
        LDA #&00
@@ -7264,9 +7286,7 @@ ENDIF
        DEC &C2CF
        JSR LAE68
        LDX &CF
-.LB14D 
-       JSR chunk_2
-
+.LB14D chunk_2
        LDA #&C0
        JSR chunk_44
        PLA
@@ -9017,3 +9037,5 @@ ENDIF
 PRINT "    code ends at",~P%," (",(&C000 - P%), "bytes free )"
 
 SAVE "", &8000, &C000
+
+;; vi: sts=7 sw=7
