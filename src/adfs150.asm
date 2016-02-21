@@ -79,6 +79,42 @@ MACRO chunk_6_body
        xJMP_OR_JSR LABE7
 ENDMACRO
 
+MACRO chunk_7_body
+       LDA &C2BA
+       LDX &C2BB
+       JSR L8053
+       LDA &C2BA
+       CMP #&FE
+ENDMACRO
+
+MACRO chunk_8_body
+       LDA &C3B6,X
+       AND #&E0
+       CMP &C317
+ENDMACRO
+
+MACRO chunk_9_body
+       LDA &B4
+       STA &C240
+       LDA &B5
+       STA &C241
+       xlda_40_sta_b8_lda_c2_sta_b9_rts
+ENDMACRO
+
+MACRO xsta_b8_lda_c2_sta_b9_body
+       STA &B8
+       LDA #&C2
+       STA &B9
+ENDMACRO
+
+MACRO xlda_40_sta_b8_lda_c2_sta_b9_body
+       LDA #&40
+IF SMALL_CODE
+.xsta_b8_lda_c2_sta_b9_subroutine
+ENDIF
+       xsta_b8_lda_c2_sta_b9_body
+ENDMACRO
+
 IF SMALL_CODE
        MACRO chunk_1
 	      jsr chunk_1_subroutine
@@ -99,6 +135,30 @@ IF SMALL_CODE
        MACRO chunk_6
 	      jsr chunk_6_subroutine
        ENDMACRO
+
+       MACRO chunk_7
+	      jsr chunk_7_subroutine
+       ENDMACRO
+
+       MACRO chunk_8
+	      jsr chunk_8_subroutine
+       ENDMACRO
+
+       MACRO chunk_9
+	      jsr chunk_9_subroutine
+       ENDMACRO
+
+       MACRO xlda_40_sta_b8_lda_c2_sta_b9
+	      jsr xlda_40_sta_b8_lda_c2_sta_b9_subroutine
+       ENDMACRO
+
+       MACRO xlda_40_sta_b8_lda_c2_sta_b9_rts
+	      jmp xlda_40_sta_b8_lda_c2_sta_b9_subroutine
+       ENDMACRO
+
+       MACRO xsta_b8_lda_c2_sta_b9
+	      jsr xsta_b8_lda_c2_sta_b9_subroutine
+       ENDMACRO
 ELSE
        MACRO chunk_1
 	      chunk_1_body
@@ -118,6 +178,31 @@ ELSE
 
        MACRO chunk_6
 	      chunk_6_body
+       ENDMACRO
+       
+       MACRO chunk_7
+	      chunk_7_body
+       ENDMACRO
+
+       MACRO chunk_8
+	      chunk_8_body
+       ENDMACRO
+
+       MACRO chunk_9
+	      chunk_9_body
+       ENDMACRO
+
+       MACRO xlda_40_sta_b8_lda_c2_sta_b9
+	      xlda_40_sta_b8_lda_c2_sta_b9_body
+       ENDMACRO
+
+       MACRO xlda_40_sta_b8_lda_c2_sta_b9_rts
+	      xlda_40_sta_b8_lda_c2_sta_b9_body
+	      rts
+       ENDMACRO
+
+       MACRO xsta_b8_lda_c2_sta_b9
+	      xsta_b8_lda_c2_sta_b9_body
        ENDMACRO
 ENDIF
 
@@ -2814,7 +2899,7 @@ ENDIF
 
 ;;
        JSR LA50D
-       JSR chunk_9
+       chunk_9
 
 .L9127 JSR L8CD4
        BEQ L9131
@@ -3342,7 +3427,7 @@ ENDIF
        STA &C242,X
        DEX
        BPL L9580
-       JSR chunk_9
+       chunk_9
        JSR L8DFE
        LDY #&09
        JSR chunk_23
@@ -3848,7 +3933,7 @@ ENDIF
        PHA
        LDA &B5
        PHA
-       JSR lda_40_sta_b8_lda_c2_sta_b9
+       xlda_40_sta_b8_lda_c2_sta_b9
        JSR L94EE
        PLA
        STA &B5
@@ -4734,7 +4819,7 @@ ENDIF
 ;; ================
 .L9ED3 JSR L8328
        LDA #&A2
-       JSR sta_b8_lda_c2_sta_b9
+       xsta_b8_lda_c2_sta_b9
        JSR LA50D        ;; Skip spaces, etc
        LDX #&FD         ;; Point to table start minus 3
 .L9EE3 INX
@@ -4818,28 +4903,18 @@ IF SMALL_CODE
 
 .chunk_6_subroutine
        chunk_6_body
+
+.chunk_7_subroutine
+       chunk_7_body
+       RTS
+
+.chunk_8_subroutine
+       chunk_8_body
+       RTS
+
+.chunk_9_subroutine
+       chunk_9_body
 ENDIF
-
-.chunk_7
-       LDA &C2BA
-       LDX &C2BB
-       JSR L8053
-       LDA &C2BA
-       CMP #&FE
-       RTS
-
-.chunk_8
-       LDA &C3B6,X
-       AND #&E0
-       CMP &C317
-       RTS
-
-.chunk_9
-       LDA &B4
-       STA &C240
-       LDA &B5
-       STA &C241
-       JMP lda_40_sta_b8_lda_c2_sta_b9
 
 .chunk_10
        LDA #&FF
@@ -5040,7 +5115,7 @@ ENDIF
        RTS
 
 .chunk_53
-       JSR chunk_8
+       chunk_8
        BNE chunk_53_rts
        LDA &C3E8,X
        CMP &C314
@@ -5136,13 +5211,11 @@ ENDIF
        BPL lda_c314_y_sta_c22c_y_dey_bpl
        RTS
 
-.lda_40_sta_b8_lda_c2_sta_b9
-       LDA #&40
-.sta_b8_lda_c2_sta_b9
-       STA &B8
-       LDA #&C2
-       STA &B9
+IF SMALL_CODE
+.xlda_40_sta_b8_lda_c2_sta_b9_subroutine
+       xlda_40_sta_b8_lda_c2_sta_b9_body
        RTS
+ENDIF
 
 .chunk_60
        STA &C314,Y
@@ -5877,7 +5950,7 @@ ENDIF
        BEQ LA579
 .LA580 JSR LA394
        JSR LA534
-       JSR lda_40_sta_b8_lda_c2_sta_b9
+       xlda_40_sta_b8_lda_c2_sta_b9
        JSR L8CED
        PHP
        JSR L8E01
@@ -5982,7 +6055,7 @@ ENDIF
        DEX
        BPL LA66D
        JSR L89D8
-       JSR lda_40_sta_b8_lda_c2_sta_b9
+       xlda_40_sta_b8_lda_c2_sta_b9
        JSR chunk_31
        LDY #&03
 .LA689 LDA (&B6),Y
@@ -6191,7 +6264,7 @@ ENDIF
        JMP L82AE        ;; Load FSM
 ;;
 .LA849 LDA #&7F
-       JSR sta_b8_lda_c2_sta_b9
+       xsta_b8_lda_c2_sta_b9
        LDA #&74
        STA &C27F
        LDA #&C2
@@ -7690,7 +7763,7 @@ ENDIF
 .LB4B9 LDX #&09
 .LB4BB LDA &C3AC,X
        BEQ LB4CA
-       JSR chunk_8
+       chunk_8
        BEQ LB4DF
 .LB4CA DEX
        BPL LB4BB
@@ -8084,9 +8157,7 @@ ENDIF
 ;;
 .LB86B BIT &CD
        BPL LB898
-
-       JSR chunk_7
-
+       chunk_7
        BCC LB885
        LDA &C2BB
        INC A
@@ -8262,9 +8333,7 @@ ENDIF
 ;;
 .LB9D3 BIT &CD
        BPL LBA03
-
-       JSR chunk_7
-
+       chunk_7
        BCC LB9ED
        LDA &C2BB
        INC A
