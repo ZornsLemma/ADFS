@@ -659,13 +659,17 @@ ELIF PATCH_IDE
        JSR SetDrive     ;; Get command &08 or &0A
        LDY #5
        LDA (&B0),Y
+;; TODO: dp11 has a potential optimisation here; see post Mon Feb 22, 2016 8:43
+;; pm
 .SetCommand
        AND #2           ;; Copy ~b1 into Cy
+IF TRUE ;; TODO: is this chunk of code redundant? it updates C...
        PHA
        EOR #2
        LSR A
        LSR A
        PLA              ;; Translate CS->&20 or CC->&30
+ENDIF ;; but this ASL then goes and updates C again anyway
        ASL A
        ASL A
        ASL A
