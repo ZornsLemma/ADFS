@@ -36,6 +36,32 @@ ENDIF
        EQUB &00
 IF TEST_SHIFT
 ENDIF
+
+;; The next set of strings must not straddle a page boundary
+;; because code assumes the MSB is constant. See code at
+;; .L9283. By locating them here immediately after the ROM header, they don't
+;; move around when the rest of the code changes so it's easy to maintain the
+;; required alignment. We check just in case though.
+.help_string_table
+.L9FB1 EQUS "<List Spec>"
+       EQUB &00
+.L9FBD EQUS "<Ob Spec>"
+       EQUB &00
+.L9FC7 EQUS "<*Ob Spec*>"
+       EQUB &00
+.L9FD3 EQUS "(<Drive>)"
+       EQUB &00
+.L9FDD EQUS "<SP> <LP>"
+       EQUB &00
+.L9FE7 EQUS "(L)(W)(R)(E)"
+       EQUB &00
+.L9FF4 EQUS "<Title>"
+.L9FFB EQUB &00
+.help_string_table_end
+IF HI(help_string_table) != HI(help_string_table_end)
+       ERROR "help_string_table must not straddle a page boundary"
+ENDIF
+
 ;;
 ;;
 ;; Claim Tube if present
@@ -5095,35 +5121,6 @@ ENDIF
        SBC #&50
        RTS
 
-;; The next set of strings must not straddle a page boundary
-;; because code assumes the MSB is constant. See code at
-;; .L9283 
-IF  ((P% AND &FF) > &B1)
-       \ TODO: If we're squishing, we don't want to waste space like
-       \ this - if it happens, we should shuffle some code into the dead
-       \ space, e.g. one of the little three or four instruction
-       \ subroutines.
-       \ TODO: We should probably bundle up a &4F-byte-sized batch of the
-       \ immediately preceding chunks, put them in a macro and conditionally
-       \ assemble them before or after this test, so it should never fire.
-       \ TODO: Temporarily disabling this error ERROR "Dead space"
-       ORG ((P% + &FF) AND &FF00) 
-ENDIF
-
-.L9FB1 EQUS "<List Spec>"
-       EQUB &00
-.L9FBD EQUS "<Ob Spec>"
-       EQUB &00
-.L9FC7 EQUS "<*Ob Spec*>"
-       EQUB &00
-.L9FD3 EQUS "(<Drive>)"
-       EQUB &00
-.L9FDD EQUS "<SP> <LP>"
-       EQUB &00
-.L9FE7 EQUS "(L)(W)(R)(E)"
-       EQUB &00
-.L9FF4 EQUS "<Title>"
-.L9FFB EQUB &00
 ;;
 ;; FSC 7 - Handle Request
 ;; ======================
