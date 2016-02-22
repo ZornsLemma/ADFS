@@ -8959,17 +8959,12 @@ IF INCLUDE_FLOPPY
 ;; TODO: dp11 has an optimisation in post Sun Feb 21, 2016 8:02 pm but I don't
 ;; understand it, waiting for feedback.
 .chunk_58
-       AND #&20
-       BNE chunk_58_lda
-       LDA #&05
-       ;; TODO: This will always branch, so we could possibly use the 'BIT
-       ;; absolute' trick to skip the LDA #&06, saving one byte, but giving
-       ;; everyone heebie-jeebies. :-)
-       BNE chunk_58_dont_lda
-.chunk_58_lda
-       LDA #&06
-.chunk_58_dont_lda
-       STA &0D5E        ;; Store drive control byte
+       AND #&20	   ;; we only have one bit possibly set
+       ASL A
+	ASL A
+	ASL A		   ;; that one bit is now in carry and A = 0
+	ADC #&05	   ;; add in carry
+	STA &0D5E	   ;; Store drive control byte
        ;; fall through to chunk_50
 .chunk_50
        LDA #&01
