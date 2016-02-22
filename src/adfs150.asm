@@ -8965,7 +8965,10 @@ IF INCLUDE_FLOPPY
        AND #&20
        BNE chunk_58_lda
        LDA #&05
-       BNE chunk_58_dont_lda	;; TODO: This will always branch?!
+       ;; TODO: This will always branch, so we could possibly use the 'BIT
+       ;; absolute' trick to skip the LDA #&06, saving one byte, but giving
+       ;; everyone heebie-jeebies. :-)
+       BNE chunk_58_dont_lda
 .chunk_58_lda
        LDA #&06
 .chunk_58_dont_lda
