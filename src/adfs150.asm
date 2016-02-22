@@ -697,6 +697,9 @@ ENDIF ;; but this ASL then goes and updates C again anyway
        ROL A
        ROL A
        RTS
+;; TODO: Potential optimisation here - waiting for confirmation someone will
+;; be testing IDE afterwards before making the change. See dp11 post Mon Feb 22,
+;; 2016 9:05 pm - SetRandom is only called from a JMP so can be inlined.
 .SetRandom
        JSR SetCylinder  ;; Set sector b16-b21
        EOR &C201,X      ;; Merge Drive and Head
