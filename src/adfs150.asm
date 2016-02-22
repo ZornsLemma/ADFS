@@ -8,7 +8,27 @@ CPU 1
 ;;
 ;;               DISASSEMBLY COMMENTARY COPYRIGHT J.G.HARSTON
 ;;               ============================================
-;;
+
+;; TODO: Use these named constants everywhere?
+;; These constants are relevant for all control blocks everywhere
+control_block_full_size = 16
+control_block_size_excl_length = 10
+
+;; Offsets within a control block
+cb_result = 0
+cb_addr = 1 ;; 4 bytes
+cb_command = 5
+cb_drive_and_sector = 6 ;; 3 bytes, made up of
+       cb_drive_sector_b16_20 = 6
+       cb_sector_b8_15 = 7
+       cb_sector_b0_7 = 8
+cb_sector_count = 9 ;; 2 bytes
+cb_length = 11 ;; 4 bytes
+
+;; Workspace allocation
+workspace_control_block = &C215
+workspace_current_directory = &C400
+
 ;; ROM HEADER
 ;; ==========
        EQUB &00,&00,&00 ;; No language entry
@@ -799,8 +819,10 @@ ENDIF
 ;;
 ;; Do predefined SCSI operations
 ;; -----------------------------
-.L82AA LDX #&15         ;; Point to &C215
-       LDY #&C2
+.scsi_op_using_workspace_control_block
+.L82AA LDX #<workspace_control_block
+       LDY #>workspace_control_block
+.scsi_op_using_yx
 .L82AE JSR L80A2        ;; Do a disk operation
        BEQ RTS2		;; Exit if OK	
 ;;
@@ -1538,17 +1560,13 @@ ENDIF
 .L883B EQUB &00
 ;;
 ;; Control block to load '$'
+.control_block_load_root
 .L883C EQUB &01
-       EQUB &00
-       EQUB &C4
-       EQUB &FF
-       EQUB &FF
-       EQUB &08
-       EQUB &00
-       EQUB &00
-       EQUB &02
-       EQUB &05
-       EQUB &00
+       EQUW workspace_current_directory ;; load here
+       EQUW &FFFF		        ;; in I/O processor
+       EQUB &08		                ;; read command
+       EQUB &00,&00,&02	                ;; load from sector 2
+       EQUW &0005	                ;; load 5 sectors
 ;;
 ;; Check drive character
 .L8847 CMP #&30
@@ -1613,8 +1631,8 @@ ENDIF
        LDA &C22E
        BPL L88CC
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
-.L88CC LDY #>L883C
-       LDX #<L883C
+.L88CC LDY #>control_block_load_root
+       LDX #<control_block_load_root
        JSR L82AE        ;; Load '$'
        LDA #&02
        STA &C314        ;; Set CURR to &000002 - '$'
@@ -1739,22 +1757,24 @@ ENDIF
        CMP #&FF
        BEQ L8A22
        TAX
-       LDY #&0A
-.L89F9 LDA L883C,Y      ;; Copy parameter block to
-       STA &C215,Y      ;; load '$'
+
+;; Copy parameter block to load '$'
+       LDY #control_block_size_excl_length
+.L89F9 LDA control_block_load_root,Y
+       STA workspace_control_block,Y
        DEY
        BPL L89F9
        STX &C316        ;; Copy parameters to &C215
-       STX &C21B
+       STX workspace_control_block + cb_drive_sector_b16_20
        LDA &C22D
        STA &C315
-       STA &C21C
+       STA workspace_control_block + cb_sector_b8_15
        LDA &C22C
        STA &C314
-       STA &C21D
+       STA workspace_control_block + cb_sector_b0_7
        LDA #&FF
        STA &C22E
-       JSR L82AA        ;; Do disk op from &C215
+       JSR scsi_op_using_workspace_control_block
 .L8A22 LDA &CD
        STA &C320
        JSR LA744        ;; Get WS address in &BA
