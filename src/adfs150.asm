@@ -1644,9 +1644,6 @@ ENDIF
        JSR chunk_55
        LDA &C22E
        INC A
-       BNE L89B4
-       JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
-.L89B4 JSR chunk_16
        JSR chunk_17
        JSR L82AA
        BRA L88FD
@@ -3141,9 +3138,6 @@ ENDIF
        BNE L9496
 .L949E LDY &C22E
        INY
-       BNE L94AF
-       JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
-.L94AF JSR chunk_16
        JSR chunk_17
        LDA &B7
        CMP #&94
@@ -4824,6 +4818,10 @@ ENDIF
        RTS
 
 .chunk_17
+       BNE chunk_17_nojsr
+       JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
+.chunk_17_nojsr
+       JSR chunk_16
        LDX #&02
        LDY #&16
 .chunk_17_loop
