@@ -8956,8 +8956,6 @@ ENDIF
 ENDIF
 
 IF INCLUDE_FLOPPY
-;; TODO: dp11 has an optimisation in post Sun Feb 21, 2016 8:02 pm but I don't
-;; understand it, waiting for feedback.
 .chunk_58
        AND #&20	   ;; we only have one bit possibly set
        ASL A
