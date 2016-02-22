@@ -62,6 +62,15 @@ IF HI(help_string_table) != HI(help_string_table_end)
        ERROR "help_string_table must not straddle a page boundary"
 ENDIF
 
+;; TODO: There are some NOPs in this code, it's not clear if we need them, and 
+;; if we do it may be better to go with the chunk_20/chunk_21 subroutines which
+;; potentially give a longer delay and save code size. See
+;; http://stardot.org.uk/forums/viewtopic.php?f=3&t=10519&p=132166#p132166,
+;; especially hoglet's post Sun Feb 21, 2016 7:01 pm - we perhaps need to look
+;; at ADFS 1.40 - and dp11's post on Feb 22, 2016 8:40 pm which has some good
+;; techniques for compact delay code if we do want to keep the NOPs but perhaps
+;; get the same effect with less code.
+
 ;;
 ;;
 ;; Claim Tube if present
