@@ -29,6 +29,7 @@ default_retries = &10
 
 ;; Zero page workspace
 
+zp_control_block_ptr = &B0 ;; 2 bytes
 zp_current_retries = &CE
 
 ;; &CD ADFS status flag
@@ -142,7 +143,7 @@ ENDIF
 .L8020 LDY #&04
        BIT zp_adfs_status_flag
        BPL L8039        ;; Exit with no Tube present
-.L8026 LDA (&B0),Y      ;; Copy address to &C227-2A
+.L8026 LDA (zp_control_block_ptr),Y      ;; Copy address to &C227-2A
        STA &C226,Y
        DEY
        BNE L8026
@@ -261,6 +262,10 @@ ELSE
        AND #&02         ;; BUSY?
        BEQ L8091        ;; Loop until not BUSY
 ENDIF
+;; TODO: I think this label isn't needed in the PATCH_SD build, so can be
+;; IF-ed out to save another byte, but not changing this now as it would break
+;; binary comparison.
+.scsi_access_rts
 .L8098 RTS
 ;;
 ;; Initialise retries value
@@ -299,8 +304,8 @@ ENDIF
 ;;
 .scsi_access
 .L80A2 JSR wait_for_ensuring ;; Wait for ensuring to complete
-       STX &B0
-       STY &B1          ;; &B0/1=>control block
+       STX zp_control_block_ptr
+       STY zp_control_block_ptr+1          ;; &B0/1=>control block
        JSR check_loaded_directory ;; Check if directory loaded
 ;;
 ;; The SD driver either succeeds or fails, so we don't need any retry logic. We
@@ -310,7 +315,7 @@ ENDIF
 IF NOT(PATCH_SD)
 {
        LDY #&05
-       LDA (&B0),Y      ;; Get Command
+       LDA (zp_control_block_ptr),Y      ;; Get Command
        CMP #&2F         ;; Verify?
        BEQ scsi_access_no_retry ;; Jump directly to do it
        CMP #scsi_command_park ;; Park?
@@ -323,7 +328,7 @@ IF NOT(PATCH_SD)
 ;;
 .loop
        JSR scsi_access_no_retry ;; Do the specified command
-       BEQ L8098        ;; Exit if ok
+       BEQ scsi_access_rts ;; Exit if ok
        CMP #&04         ;; Not ready?
        BNE retry        ;; Jump if result<>Not ready
 ;;                                         If Drive not ready, pause a bit
@@ -349,10 +354,10 @@ ENDIF
 ;; ---------------------
 .scsi_access_no_retry
 .L80DF LDY #&04
-       LDA (&B0),Y      ;; Get Addr3
+       LDA (zp_control_block_ptr),Y      ;; Get Addr3
        TAX              ;; X=Addr3 - I/O or Language
        DEY
-       LDA (&B0),Y      ;; Get Addr2 - Screen bank
+       LDA (zp_control_block_ptr),Y      ;; Get Addr2 - Screen bank
        JSR L8053        ;; Set I/O and Screen settings
 ;;
 ;; No hard drive present, drive 0 to 7 map onto floppies 0 to 3.
@@ -370,10 +375,10 @@ IF INCLUDE_FLOPPY
        JSR chunk_14
        STA abs_workspace_error+awe_drive_sector_b16_19        ;; Store
        INY
-       LDA (&B0),Y      ;; Get Sector b8-b15
+       LDA (zp_control_block_ptr),Y      ;; Get Sector b8-b15
        STA abs_workspace_error+awe_sector_b8_15
        INY
-       LDA (&B0),Y      ;; Get Sector b0-b7
+       LDA (zp_control_block_ptr),Y      ;; Get Sector b0-b7
        STA abs_workspace_error+awe_sector_b0_7
        PLA              ;; Restore result
        STA abs_workspace_error+awe_scsi_error        ;; Store
@@ -399,16 +404,16 @@ ENDIF
 		        ;; Y=1/2; Get Addr0/1; &B2/3=address b0-b15
 .loop			;; SAVING: 2 bytes
 	INY
-	LDA (&B0),Y
+	LDA (zp_control_block_ptr),Y
 	STA &B1,Y
 	CPY #2:BNE loop
 }
        INY
-       LDA (&B0),Y      ;; Get Addr2
+       LDA (zp_control_block_ptr),Y      ;; Get Addr2
        CMP #&FE
        BCC L8134        ;; Addr<&FFFE0000, language space
        INY
-       LDA (&B0),Y      ;; Get Addr3
+       LDA (zp_control_block_ptr),Y      ;; Get Addr3
        INC A
        BEQ L8137        ;; Address &FFxxxxxx, use I/O memory
 .L8134 JSR L8020        ;; Claim Tube
@@ -419,7 +424,7 @@ include "SD_Driver.asm"
 
 ELIF PATCH_IDE
        LDY #5           ;; Get command, CC=Read, CS=Write
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        CMP #&09
        AND #&FD         ;; Jump if Read (&08) or Write (&0A)
        EOR #&08
@@ -431,18 +436,18 @@ ELIF PATCH_IDE
 .CommandSaveLp
        LDA &7F,Y        ;; Save &80-&89 and copy block
        PHA
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        STA &7F,Y
        DEY
        BNE CommandSaveLp
-       LDA &B0
+       LDA zp_control_block_ptr
        PHA
-       LDA &B1
+       LDA zp_control_block_ptr+1
        PHA
        JSR UpdateDrive  ;; Merge drive
 ;;     LDA #&7F
-       STA &B0          ;; Point to block in RAM
-       STY &B1
+       STA zp_control_block_ptr          ;; Point to block in RAM
+       STY zp_control_block_ptr+1
        PHP              ;; Set shape to c*4*64
        JSR SetGeometry
        PLP
@@ -494,8 +499,8 @@ ELIF PATCH_IDE
        PHA              ;; Release Tube
        JSR L803A
        PLA
-       LDX &B0          ;; Restore registers, set EQ flag
-       LDY &B1
+       LDX zp_control_block_ptr          ;; Restore registers, set EQ flag
+       LDY zp_control_block_ptr+1
        AND #&7F
        RTS
 .TransferByte
@@ -525,9 +530,9 @@ ELIF PATCH_IDE
        BNE CommandLoop  ;; Done, check for errors
 .TransDone
        PLA              ;; Restore pointer
-       STA &B1
+       STA zp_control_block_ptr+1
        PLA
-       STA &B0
+       STA zp_control_block_ptr
        INY
 .CommandRestore         ;; Restore memory
        PLA
@@ -543,7 +548,7 @@ ELIF PATCH_IDE
        STA &FC42
        STA &FC43
        LDY #6           ;; Get drive number
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        LSR A
        LSR A
        ORA #3
@@ -552,13 +557,13 @@ ELIF PATCH_IDE
        BNE SetCmd       ;; 4 heads per cylinder
 ELSE
        LDY #&05
-       LDA (&B0),Y      ;; Get Command
+       LDA (zp_control_block_ptr),Y      ;; Get Command
        JSR L833E        ;; Send to SCSI data port
        JSR chunk_14
        STA &C333
        BRA L814C        ;; Send rest of command block SAVING: 1 byte
 ;;
-.L814A LDA (&B0),Y      ;; Get a command block byte
+.L814A LDA (zp_control_block_ptr),Y      ;; Get a command block byte
 .L814C JSR L833E        ;; Send to SCSI data port
        JSR L8332        ;; Wait until SCSI busy
        BPL L8159        ;; If SCSI says enough command
@@ -566,7 +571,7 @@ ELSE
        INY              ;; Keep sending command block
        BNE L814A        ;; until SCSI says 'stop!'
 .L8159 LDY #&05
-       LDA (&B0),Y      ;; Get Command
+       LDA (zp_control_block_ptr),Y      ;; Get Command
        AND #&FD         ;; Lose bit 1
        EOR #&08         ;; Is Command &08 or &0A?
        BEQ L81DB        ;; Jump if not Read or Write
@@ -633,8 +638,8 @@ ELSE
        JMP L825D        ;; Get status from SCSI and return it
 ;;
 .L81D2 LDA #&00         ;; A=0 - OK
-.L81D4 LDX &B0          ;; Restore XY pointer
-       LDY &B1
+.L81D4 LDX zp_control_block_ptr          ;; Restore XY pointer
+       LDY zp_control_block_ptr+1
        AND #&7F         ;; Lose bit 7
        RTS              ;; Return with result in A
 ;;
@@ -693,24 +698,24 @@ ELIF PATCH_IDE
        LDA #1           ;; One sector
        STA &FC42
        CLC              ;; Set sector b0-b5
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        AND #63
        ADC #1
        STA &FC43
        DEY              ;; Set sector b8-b15 Y=7
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        STA &FC44
        DEY              ;; Set sector b16-b21 Y=6
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        JSR SetCylinder
        INY              ;; Merge Drive and Head Y=7
        INY		;; Y=8
-       EOR (&B0),Y
+       EOR (zp_control_block_ptr),Y
        AND #2
-       EOR (&B0),Y
+       EOR (zp_control_block_ptr),Y
        JSR SetDrive     ;; Get command &08 or &0A
        LDY #5
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
 .SetCommand
 		        ;; Convert &08/&0A to &20/&30
 		        ;; 08            0A
@@ -1928,8 +1933,8 @@ ENDIF
 ;;                                         Fall through to try once more
 .L8B09 LDX #&15         ;; Point to control block
        LDY #&C2
-       STX &B0
-       STY &B1
+       STX zp_control_block_ptr
+       STY zp_control_block_ptr+1
        LDX &C219        ;; Get Addr3
        LDA &C218        ;; Get Addr2
        JSR L8053        ;; Check for shadow screen memory
@@ -2344,7 +2349,7 @@ ENDIF
 .L8DF8 EQUS &7F, "^@:$&"
 ;;
 .L8DFE JSR L8CF4
-.L8E01 BNE L8E24
+.L8E01 BNE check_dir_full_error
 ;; fall through to chunk_30
 .chunk_30
        LDX #&02
@@ -2367,6 +2372,7 @@ ENDIF
        RTS
 
 ;;
+.check_dir_full_error
 .L8E24 LDA &C8B1
        BEQ L8E36
        JSR L836B
@@ -4848,7 +4854,7 @@ ENDIF
 
 .chunk_14
        LDY #&06
-       LDA (&B0),Y      ;; Get drive
+       LDA (zp_control_block_ptr),Y      ;; Get drive
        ORA &C317        ;; OR with current drive
        RTS
 
@@ -6757,10 +6763,10 @@ ENDIF
        JSR LABD8
        LDA &C298
        JSR LB56C
-       STY &B1
-       STX &B0
+       STY zp_control_block_ptr+1
+       STX zp_control_block_ptr
        JSR init_retries
-.LACA8 LDX &B0
+.LACA8 LDX zp_control_block_ptr
 IF INCLUDE_FLOPPY
        JSR chunk_38
        BEQ LACB5
@@ -6816,8 +6822,8 @@ ELSE
 ENDIF
 .LACD5 JSR L81AD        ;; Release and get result
        BNE LACBA        ;; Retry with error
-.LACDA LDX &B0          ;; Restore X & Y
-       LDY &B1
+.LACDA LDX zp_control_block_ptr          ;; Restore X & Y
+       LDY zp_control_block_ptr+1
        LDA #&81
        STA &C204,X
        JMP LAC17
@@ -8207,11 +8213,11 @@ ENDIF
        STA (&C6)
        LDY #&05
        LDA (&C6),Y
-       STA &B0
+       STA zp_control_block_ptr
        BEQ LB925
        LDY #&09
        LDA (&C6),Y
-       STA &B1
+       STA zp_control_block_ptr+1
        CMP #&2F
        BCS LB925
        TAX
@@ -8238,14 +8244,14 @@ ENDIF
        STA &B4
        BCC LB9B5
        INC &B5
-.LB9B5 INC &B1
-       DEC &B0
+.LB9B5 INC zp_control_block_ptr+1
+       DEC zp_control_block_ptr
        BNE LB99E
 .LB9BB LDY #&05
-       LDA &B0
+       LDA zp_control_block_ptr
        STA (&C6),Y
        LDY #&09
-       LDA &B1
+       LDA zp_control_block_ptr+1
        STA (&C6),Y
        JMP LB925
 
@@ -8402,7 +8408,7 @@ IF INCLUDE_FLOPPY
        BIT &A1
        BVS LBB38
        LDY #&05
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        CMP #&0B
        BNE LBB38
        BEQ LBB23
@@ -8428,9 +8434,9 @@ IF INCLUDE_FLOPPY
        TSX
        STX &C2E7
        LDA #&C2
-       STA &B1
+       STA zp_control_block_ptr+1
        LDA #&15
-       STA &B0
+       STA zp_control_block_ptr
        STZ &C2E0
        JSR LBB72
        JSR LBD6E
@@ -8438,16 +8444,16 @@ IF INCLUDE_FLOPPY
 ;;
 .LBB72 STZ &C2E3
        LDY #&01         ;; Point to address
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        STA &B2
        INY
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        STA &B3          ;; &B2/3=>Address low word
        INY
-       LDA (&B0),Y      ;; Address byte 3
+       LDA (zp_control_block_ptr),Y      ;; Address byte 3
        TAX
        INY
-       LDA (&B0),Y      ;; Address byte 4
+       LDA (zp_control_block_ptr),Y      ;; Address byte 4
        INX
        BEQ LBB8D
        INX
@@ -8458,7 +8464,7 @@ IF INCLUDE_FLOPPY
        BPL LBB98
        JSR L8020
 .LBB98 LDY #&05
-       LDA (&B0),Y      ;; Get command
+       LDA (zp_control_block_ptr),Y      ;; Get command
        CMP #&08
        BEQ LBBB0        ;; Jump with Read
        CMP #&0A
@@ -8508,10 +8514,10 @@ IF INCLUDE_FLOPPY
        DEY
        BPL LBC1A
        LDY #&01
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        STA &0D00+(nmi_sta_abs+1-nmi_handler_start)
        INY
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        STA &0D00+(nmi_sta_abs+2-nmi_handler_start)
        BIT &A1
        BMI LBC39
@@ -8584,10 +8590,10 @@ IF INCLUDE_FLOPPY
        DEY
        BPL LBC89
        LDY #&01
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        STA &0D0B
        INY
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        STA &0D0C
 .LBC9F RTS
 ;;
@@ -8754,13 +8760,13 @@ endif
        LDA #&40
        TSB &A2
        LDY #&07
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        STA &0D58
        INY
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        INY
        CLC
-       ADC (&B0),Y
+       ADC (zp_control_block_ptr),Y
        STA &0D59
        BCC LBDD7
        INC &0D58
@@ -8774,13 +8780,13 @@ endif
        LDA #&10
 .LBDE9 LDY #&09
        SEC
-       SBC (&B0),Y
+       SBC (zp_control_block_ptr),Y
        BCS LBE0D
        LDA #&10
        SEC
        SBC &A4
        STA &0D58
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        SEC
        SBC &0D58
        LDX #&00
@@ -8790,7 +8796,7 @@ endif
        STA &0D59
        BPL LBE1C
 .LBE0D LDY #&09
-       LDA (&B0),Y
+       LDA (zp_control_block_ptr),Y
        STA &0D58
        LDA #&FF
        STA &0D57
@@ -8944,16 +8950,16 @@ endif
 			;; SAVING: 1 byte
 ;;
 .LBF5E LDY #&07
-       LDA (&B0),Y      ;; Get sector b8-b15
+       LDA (zp_control_block_ptr),Y      ;; Get sector b8-b15
        CMP #&0A         ;; Check for sector &0A00
        BCS LBF6F	;; >=&A00 - sector not within range
                         ;; <&A00 - sector within range
 ;;
 .LBF8F LDY #&07
-       LDA (&B0),Y      ;; Get sector b8-b15
+       LDA (zp_control_block_ptr),Y      ;; Get sector b8-b15
        TAX              ;; Pass to X
        INY
-       LDA (&B0),Y      ;; Get sector b0-b7
+       LDA (zp_control_block_ptr),Y      ;; Get sector b0-b7
        JSR chunk_11
        BMI LBFB6        ;; Side 0, leave track as 0-79
        STA &A5          ;; Store track 0-79
@@ -9012,13 +9018,13 @@ endif
        JSR &FFF4        
 
 .LBFE9 JSR L803A        ;; Release Tube, restore screen
-       LDX &B0
+       LDX zp_control_block_ptr
        LDA &C2E3        ;; Get error
        BEQ LBFFA        ;; If zero, jump to return Ok
        ORA #&40         ;; Set bit 6 to flag FDC error
        LDY #&FF
        STY &C2E4
-.LBFFA LDY &B1
+.LBFFA LDY zp_control_block_ptr+1
        AND #&7F         ;; Remove bit 7 and set EQ
        RTS              ;; Return with A=error, EQ=Ok
 ;;
