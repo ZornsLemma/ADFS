@@ -262,17 +262,13 @@ ELSE
        AND #&02         ;; BUSY?
        BEQ L8091        ;; Loop until not BUSY
 ENDIF
-;; TODO: I think this label isn't needed in the PATCH_SD build, so can be
-;; IF-ed out to save another byte, but not changing this now as it would break
-;; binary comparison.
-.scsi_access_rts
-.L8098 RTS
 ;;
 ;; Initialise retries value
 ;; ------------------------
 .init_retries
 .L8099 LDA abs_workspace_default_retries        ;; Get default retries
        STA zp_current_retries          ;; Set current retries
+.RTS15
        RTS
 ;;
 ;;
@@ -328,7 +324,7 @@ IF NOT(PATCH_SD)
 ;;
 .loop
        JSR scsi_access_no_retry ;; Do the specified command
-       BEQ scsi_access_rts ;; Exit if ok
+       BEQ RTS15        ;; Exit if ok
        CMP #&04         ;; Not ready?
        BNE retry        ;; Jump if result<>Not ready
 ;;                                         If Drive not ready, pause a bit
