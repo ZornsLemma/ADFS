@@ -58,6 +58,16 @@ abs_workspace_control_block = &C215
 abs_workspace_current_directory = &C400
 abs_workspace_park = &C900
 
+;; ADFS Error Information:
+abs_workspace_error = &C2D0
+awe_sector_b0_b7 = 0 ;;   &C2D0 Sector b0-b7
+awe_sector_b8_15 = 1 ;;   &C2D1 Sector b8-b15
+awe_sector_b16_19 = 2 ;;   &C2D2 Sector b16-b19 and Drive
+awe_error_scsi_error = 3   ;;   &C2D3 SCSI error number
+awe_channel_num = 4  ;;   &C2D4 Channel number if &C2D3.b7=1
+awe_end = 4 
+;;
+
 scsi_command_read = &08
 scsi_command_park = &1B
 
@@ -298,6 +308,7 @@ ENDIF
 ;; operation.
 ;;
 IF NOT(PATCH_SD)
+{
        LDY #&05
        LDA (&B0),Y      ;; Get Command
        CMP #&2F         ;; Verify?
@@ -305,29 +316,32 @@ IF NOT(PATCH_SD)
        CMP #scsi_command_park ;; Park?
        BEQ scsi_access_no_retry ;; Jump directly to do it
        JSR init_retries ;; Set number of retries
-       BPL L80D7        ;; Jump into middle of retry loop
+       BPL retry        ;; Jump into middle of retry loop
 ;;
 ;; This loop tries to access a drive. If the action returns 'Not ready' it
 ;; retries a number of times, allowing interuption by an Escape event.
 ;;
-.L80BD JSR scsi_access_no_retry ;; Do the specified command
+.loop
+       JSR scsi_access_no_retry ;; Do the specified command
        BEQ L8098        ;; Exit if ok
        CMP #&04         ;; Not ready?
-       BNE L80D7        ;; Jump if result<>Not ready
+       BNE retry        ;; Jump if result<>Not ready
 ;;                                         If Drive not ready, pause a bit
        LDY #&19         ;; Loop 25*256*256 times
-.L80C8 BIT &FF          ;; Escape pressed?
+.delay BIT &FF          ;; Escape pressed?
        BMI L809F        ;; Abort with Escape error
        DEC A		;; SAVING: 2 bytes
-       BNE L80C8        ;; Loop 256 times with A
+       BNE delay        ;; Loop 256 times with A
        DEX
-       BNE L80C8        ;; Loop 256 times with X
+       BNE delay        ;; Loop 256 times with X
        DEY
-       BNE L80C8        ;; Loop 25 times with Y
-.L80D7 CMP #&40         ;; Result=Write protected?
+       BNE delay        ;; Loop 25 times with Y
+;;
+.retry CMP #&40         ;; Result=Write protected?
        BEQ scsi_access_no_retry ;; Abort immediately TODO: Actually try once more?
        DEC zp_current_retries ;; Dec number of retries
-       BPL L80BD        ;; Jump to try again
+       BPL loop         ;; Jump to try again
+}
 ;;                                         Drop through to try once more
 ENDIF
 ;;
@@ -360,19 +374,11 @@ IF INCLUDE_FLOPPY
        STA &C2D1
        INY
        LDA (&B0),Y      ;; Get Sector b0-b7
-       STA &C2D0
+       STA abs_workspace_error+awe_sector_b0_b7
        PLA              ;; Restore result
        STA &C2D3        ;; Store
 .L8110 RTS
 ENDIF
-;;
-;; ADFS Error Information:
-;;   &C2D0 Sector b0-b7
-;;   &C2D1 Sector b8-b15
-;;   &C2D2 Sector b16-b19 and Drive
-;;   &C2D3 SCSI error number
-;;   &C2D4 Channel number if &C2D3.b7=1
-;;
 ;;
 ;; Hard drive hardware is present. Check what drive is being accessed.
 ;;
@@ -813,7 +819,7 @@ ELSE
        BPL L826F        ;; Send 4 zeros: sends &03 dd &00 &00 &00 &00
 .L8275 JSR L8332        ;; Wait for SCSI
        LDA &FC40        ;; Get byte from SCSI
-       STA &C2D0,X      ;; Store in error block
+       STA abs_workspace_error,X      ;; Store in error block
        DEX
        BPL L8275        ;; Loop to fetch four bytes, err, sec.hi, sec.mid, sec.lo
        LDA &C333
@@ -1031,7 +1037,7 @@ ENDIF
        AND #&1F
        LDX #&02
        BNE L83CE
-.L83CB LDA &C2D0,X
+.L83CB LDA abs_workspace_error,X
 .L83CE JSR L8451
        DEX
        BPL L83CB
@@ -1940,7 +1946,7 @@ IF INCLUDE_FLOPPY
        LDA &C21C
        STA &C2D1
        LDA &C21D
-       STA &C2D0
+       STA abs_workspace_error+awe_sector_b0_b7
        JSR LACE6
        STA &C204,X
        TXA
@@ -4523,7 +4529,7 @@ ENDIF
 .L9DC0 CMP #&73
        BNE L9DD0
        LDY #&04
-.L9DC6 LDA &C2D0,Y
+.L9DC6 LDA abs_workspace_error,Y
        STA (&F0),Y
        DEY
        BPL L9DC6
@@ -6525,7 +6531,7 @@ ENDIF
        ORA #&30
        STA &C2D4
        LDA &C201,X
-       STA &C2D0
+       STA abs_workspace_error+awe_sector_b0_b7
        LDA &C202,X
        STA &C2D1
        LDA &C203,X
@@ -6741,7 +6747,7 @@ ENDIF
 .LAC7A LDX &C295
        LDA &C296
        STA &C201,X
-       STA &C2D0
+       STA abs_workspace_error+awe_sector_b0_b7
        LDA &C297
        STA &C202,X
        STA &C2D1
