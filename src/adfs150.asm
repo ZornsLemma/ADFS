@@ -5229,7 +5229,7 @@ ENDIF
        EQUB &00
 ;;
 .LA036 LDA #&20
-       EQUB &2C \ BIT abs - see http://www.6502.org/tutorials/6502opcodes.html#BIT
+       BRA LA03C
 ;;
 .LA03A LDA #&0D
 .LA03C PHX
