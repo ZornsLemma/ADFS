@@ -22,7 +22,7 @@ cb_drive_and_sector = 6 ;; 3 bytes, made up of
        cb_drive_sector_b16_20 = 6
        cb_sector_b8_15 = 7
        cb_sector_b0_7 = 8
-cb_sector_count = 9 ;; 2 bytes
+cb_sector_count = 9 ;; 1 byte
 cb_length = 11 ;; 4 bytes
 
 default_retries = &10
@@ -31,6 +31,8 @@ default_retries = &10
 
 zp_control_block_ptr = &B0 ;; 2 bytes
 zp_current_retries = &CE
+
+zp_escape_flag = &FF ;; bit 7
 
 ;; &CD ADFS status flag
 ;; --------------------
@@ -71,7 +73,11 @@ awe_end = 4
 ;;
 
 scsi_command_read = &08
+scsi_command_write = &0A
 scsi_command_park = &1B
+scsi_command_verify = &2F
+
+scsi_error_not_ready = &04
 
 ;; ROM HEADER
 ;; ==========
@@ -141,11 +147,11 @@ ENDIF
 ;;
 ;; Claim Tube if present
 ;; ---------------------
-.L8020 LDY #&04
+.L8020 LDY #cb_addr+3   ;; 4
        BIT zp_adfs_status_flag
        BPL L8039        ;; Exit with no Tube present
 .L8026 LDA (zp_control_block_ptr),Y      ;; Copy address to &C227-2A
-       STA &C226,Y
+       STA &C226,Y      
        DEY
        BNE L8026
        LDA #as_tube_being_used
@@ -311,9 +317,9 @@ ENDIF
 ;;
 IF NOT(PATCH_SD)
 {
-       LDY #&05
+       LDY #cb_command
        LDA (zp_control_block_ptr),Y      ;; Get Command
-       CMP #&2F         ;; Verify?
+       CMP #scsi_command_verify ;; Verify?
        BEQ scsi_access_no_retry ;; Jump directly to do it
        CMP #scsi_command_park ;; Park?
        BEQ scsi_access_no_retry ;; Jump directly to do it
@@ -326,11 +332,11 @@ IF NOT(PATCH_SD)
 .loop
        JSR scsi_access_no_retry ;; Do the specified command
        BEQ RTS15        ;; Exit if ok
-       CMP #&04         ;; Not ready?
+       CMP #scsi_error_not_ready ;; Not ready?
        BNE retry        ;; Jump if result<>Not ready
 ;;                                         If Drive not ready, pause a bit
        LDY #&19         ;; Loop 25*256*256 times
-.delay BIT &FF          ;; Escape pressed?
+.delay BIT zp_escape_flag ;; Escape pressed?
        BMI L809F        ;; Abort with Escape error
        DEC A		;; SAVING: 2 bytes
        BNE delay        ;; Loop 256 times with A
@@ -350,7 +356,7 @@ ENDIF
 ;; Try to access a drive
 ;; ---------------------
 .scsi_access_no_retry
-.L80DF LDY #&04
+.L80DF LDY #cb_addr+3
        LDA (zp_control_block_ptr),Y      ;; Get Addr3
        TAX              ;; X=Addr3 - I/O or Language
        DEY
@@ -1595,7 +1601,8 @@ ENDIF
        EQUW &FFFF		            ;; in I/O processor
        EQUB scsi_command_read
        EQUB &00,&00,&02	                    ;; load from sector 2
-       EQUW &0005	                    ;; load 5 sectors
+       EQUB &05	                            ;; load 5 sectors
+       EQUB &00
 ;;
 ;; Check drive character
 .L8847 CMP #&30
@@ -2660,16 +2667,13 @@ ENDIF
        RTS
 ;;
 ;; Control block to save FSM
+.control_block_save_fsm
 .L907A EQUB &01
-       EQUB &00
-       EQUB &C0
-       EQUB &FF
-       EQUB &FF
-       EQUB &0A
-       EQUB &00
-       EQUB &00
-       EQUB &00
-       EQUB &02
+       EQUW abs_workspace_free_space_map ;; save here
+       EQUW &FFFF		         ;; in I/O processor
+       EQUB scsi_command_write
+       EQUB &00,&00,&00		         ;; save to sector 0
+       EQUB &02    		         ;; save 2 sectors
        EQUB &00
 ;;
 ;; OSFILE &01-&03 - Write Info
@@ -5362,7 +5366,8 @@ ELSE
        EQUW &FFFF
        EQUB scsi_command_park  ;; Command &1B
        EQUB &00,&00,&00        ;; ;; Drive 0, Sector 0
-       EQUB &00,&00            ;; ;; Zero sector
+       EQUB &00                ;; ;; Zero sectors
+       EQUB &00
 ENDIF
 ;;
 .LA135 JSR LA50D
