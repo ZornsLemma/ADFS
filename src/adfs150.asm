@@ -56,6 +56,7 @@ abs_workspace_free_space_map = &C000
 ;; loading/storing to abs_workspace_default_retries.
 abs_workspace_default_retries = &C200
 abs_workspace_control_block = &C215
+abs_workspace_current_drive = &C317 ;; &FF=no current drive
 abs_workspace_current_directory = &C400
 abs_workspace_park = &C900
 
@@ -985,7 +986,7 @@ ENDIF
        INX
        BNE L8365
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
-.L8365 LDA &C317
+.L8365 LDA abs_workspace_current_drive
        STA &C22F
 .L836B JSR L89D8
        LDA #&10
@@ -1636,11 +1637,11 @@ ENDIF
        LDX &C22F
        INX
        BNE L888D
-       LDA &C317
+       LDA abs_workspace_current_drive
        STA &C22F
 .L888D JSR L8743
        JSR L8847
-       STA &C317
+       STA abs_workspace_current_drive
 .L8896 JSR L8731
 .L8899 JSR chunk_52
        BNE L88AD
@@ -1650,7 +1651,7 @@ IF INCLUDE_FLOPPY
 ENDIF
        LDA &C2D8        ;; Get CMOS byte RAM copy
        AND #&80         ;; Get hard drive flag
-.L88AA STA &C317        ;; Store in current drive
+.L88AA STA abs_workspace_current_drive        ;; Store in current drive
 .L88AD LDA #&10
        TSB &CD          ;; Flag FSM inconsistant
        JSR scsi_op_load_fsm
@@ -1775,7 +1776,7 @@ ENDIF
        LDA &C22F
        CMP #&FF
        BEQ L89EF
-       STA &C317
+       STA abs_workspace_current_drive
        LDA #&FF
        STA &C22F
        JSR scsi_op_load_fsm
@@ -1934,7 +1935,7 @@ ENDIF
        LDX &C219        ;; Get Addr3
        LDA &C218        ;; Get Addr2
        JSR L8053        ;; Check for shadow screen memory
-       LDA &C317        ;; Get current drive
+       LDA abs_workspace_current_drive        ;; Get current drive
        ORA &C21B        ;; OR with drive number
        STA &C21B        ;; Store back into control block
        STA &C333
@@ -1942,7 +1943,7 @@ IF INCLUDE_FLOPPY
        JSR chunk_38
        BNE L8B4F        ;; Jump ahead if so
 .L8B2C LDA &C21B
-       ORA &C317
+       ORA abs_workspace_current_drive
        STA abs_workspace_error+awe_drive_sector_b16_19
        LDA &C21C
        STA abs_workspace_error+awe_sector_b8_15
@@ -2810,7 +2811,7 @@ ENDIF
        LDX &C22F
        CPX #&FF
        BEQ L91A9
-       CPX &C317
+       CPX abs_workspace_current_drive
        BNE L91CB
 .L91A9 LDX #&02
 .L91AB LDA &C234,X
@@ -2823,7 +2824,7 @@ ENDIF
        EQUS "Can't delete CSD"
        EQUB &00
 ;;
-.L91CB LDA &C317
+.L91CB LDA abs_workspace_current_drive
        CMP &C31B
        BNE L91F9
        LDX #&02
@@ -2837,7 +2838,7 @@ ENDIF
        EQUS "Can't delete Library"
        EQUB &00
 ;;
-.L91F9 LDA &C317
+.L91F9 LDA abs_workspace_current_drive
        CMP &C31F
        BNE L921B
        LDX #&02
@@ -3039,7 +3040,7 @@ ENDIF
        JSR L9322
        JSR L92A8
        EQUS ")",&0D,"Drive",&BA
-       LDA &C317
+       LDA abs_workspace_current_drive
        ASL A
        ROL A
        ROL A
@@ -3278,7 +3279,7 @@ ENDIF
        LDA &C22F
        CMP #&FF
        BNE L955E
-       LDA &C317
+       LDA abs_workspace_current_drive
 .L955E STA &C31F
        LDY #&02
 .L9563 LDA &C22C,Y
@@ -3375,7 +3376,7 @@ ENDIF
 .RTS10
        RTS
 .L9649 LDA &C22F
-       CMP &C317
+       CMP abs_workspace_current_drive
        BEQ L9654
        INC A
        BNE L966C
@@ -3390,7 +3391,7 @@ ENDIF
        jsr sta_c22c_y_dey
        BPL L9663
 .L966C LDA &C31B
-       CMP &C317
+       CMP abs_workspace_current_drive
        BNE L968C
        LDY #&02
 .L9676 LDA &C2A2,Y
@@ -3404,7 +3405,7 @@ ENDIF
        DEY
        BPL L9683
 .L968C LDA &C31F
-       CMP &C317
+       CMP abs_workspace_current_drive
        BNE L96AC
        LDY #&02
 .L9696 LDA &C2A2,Y
@@ -4277,7 +4278,7 @@ ENDIF
        DEY
        DEX
        BPL L9C5F
-       LDA &C317
+       LDA abs_workspace_current_drive
        STA &C31B
        LDY #&09
 .L9C70 JSR chunk_40
@@ -4502,9 +4503,9 @@ ENDIF
 ;;
 .L9D97 LDX #&15
        LDY #&C2
-       INC &C317
+       INC abs_workspace_current_drive
        BEQ L9DA3
-       DEC &C317
+       DEC abs_workspace_current_drive
 .L9DA3 JSR scsi_access
        BPL L9DB0        ;; Jump to exit
 ;;
@@ -4739,7 +4740,7 @@ ENDIF
 ;;
 .L9F2D EQUS "ACCESS", >(L9942-1), <(L9942-1), &16
        EQUS "BACK", >(LA4D5-1), <(LA4D5-1), &00
-       EQUS "BYE", >(LA103-1), <(LA103-1), &00
+       EQUS "BYE", >(bye-1), <(bye-1), &00
        EQUS "CDIR", >(L9577-1), <(L9577-1), &20
        EQUS "COMPACT", >(LA2B6-1), <(LA2B6-1), &50
        EQUS "COPY", >(LA849-1), <(LA849-1), &13
@@ -4823,7 +4824,7 @@ ENDIF
 .chunk_8
        LDA &C3B6,X
        AND #&E0
-       CMP &C317
+       CMP abs_workspace_current_drive
        RTS
 
 .chunk_9
@@ -4840,7 +4841,7 @@ ENDIF
        RTS
 
 .chunk_12
-       LDA &C317
+       LDA abs_workspace_current_drive
        JMP LB5C5        ;; X=(A DIV 16)
 
 .chunk_13
@@ -4851,7 +4852,7 @@ ENDIF
 .chunk_14
        LDY #&06
        LDA (zp_control_block_ptr),Y      ;; Get drive
-       ORA &C317        ;; OR with current drive
+       ORA abs_workspace_current_drive        ;; OR with current drive
        RTS
 
 .chunk_15
@@ -4901,7 +4902,7 @@ ENDIF
 
 .chunk_22
        LDA &C22F
-       STA &C317
+       STA abs_workspace_current_drive
        RTS
 
 .chunk_23
@@ -5040,7 +5041,7 @@ ENDIF
        RTS
 
 .chunk_52
-       LDX &C317        ;; Get current drive
+       LDX abs_workspace_current_drive        ;; Get current drive
        INX              ;; If &FF, no directory loaded
        RTS
 
@@ -5323,7 +5324,9 @@ ENDIF
 ;;
 ;; *BYE
 ;; ====
-.LA103 LDA &C317        ;; Get current drive
+.bye
+.LA103 
+       LDA abs_workspace_current_drive        ;; Get current drive
        PHA              ;; Save current drive
        TAX
        INX
@@ -5333,21 +5336,25 @@ IF PATCH_SD
        BEQ RTS12
        JMP LB210        ;; Do CLOSE#0
 ELSE
-       BEQ LA10E        ;; No drive selected
+{
+       BEQ no_drive_selected ;; No drive selected
        JSR LB210        ;; Do CLOSE#0
-.LA10E LDA #&60
-       STA &C317        ;; Set drive to 3
-.LA113 LDX #<control_block_park
+.no_drive_selected
+       LDA #&60
+       STA abs_workspace_current_drive        ;; Set drive to 3
+.drive_loop
+       LDX #<control_block_park
        LDY #>control_block_park ;; Point to control block
        JSR scsi_access  ;; Do command &1B - park heads
-       LDA &C317        ;; Get current drive
+       LDA abs_workspace_current_drive        ;; Get current drive
        SEC
        SBC #&20         ;; Step back one
-       STA &C317
-       BCS LA113        ;; Loop for drives 3 to 0
+       STA abs_workspace_current_drive
+       BCS drive_loop   ;; Loop for drives 3 to 0
        PLA
-       STA &C317        ;; Restore current drive
+       STA abs_workspace_current_drive        ;; Restore current drive
        RTS
+}
 ;;
 .control_block_park
 .LA12A EQUB &00
@@ -5359,7 +5366,7 @@ ELSE
 ENDIF
 ;;
 .LA135 JSR LA50D
-       LDY &C317
+       LDY abs_workspace_current_drive
        INY
        BEQ LA13F
        DEY
@@ -5387,11 +5394,11 @@ ENDIF
        JSR LB213
 .LA16F DEX
        BPL LA156
-       LDA &C317
+       LDA abs_workspace_current_drive
        CMP &C26F
        BNE LA1B9
        LDA #&FF
-       STA &C317
+       STA abs_workspace_current_drive
        STA &C316
        LDX #&00
        JSR LA189
@@ -5412,7 +5419,7 @@ ENDIF
 ;; ======
 .LA19E JSR LA135        ;; Scan drive number parameter
 .LA1A1 LDA &C26F        ;; Get drive
-       STA &C317        ;; Set current drive
+       STA abs_workspace_current_drive        ;; Set current drive
 IF NOT(PATCH_SD)
        LDX #<LA1DF
        LDY #>LA1DF
@@ -6240,7 +6247,7 @@ ENDIF
        STA &C2A3
        INY
        LDA (&B6),Y
-       ORA &C317
+       ORA abs_workspace_current_drive
        STA &C2A4
        LDX #&00
        LDY #&03
@@ -6281,12 +6288,12 @@ ENDIF
        LDA &C273
        ORA &C2AA
        STA &C2AA
-       LDA &C317
+       LDA abs_workspace_current_drive
        PHA
-       STZ &C317
+       STZ abs_workspace_current_drive
        JSR L96AC
        PLA
-       STA &C317
+       STA abs_workspace_current_drive
        JSR L8F91
        JSR LA7EC
        JMP LA8B8
@@ -6629,7 +6636,7 @@ IF PATCH_IDE OR PATCH_SD
 ;;
 .UpdateDrive
        LDA &85          ;; Merge with current drive
-       ORA &C317
+       ORA abs_workspace_current_drive
        STA &85
        STA &C333        ;; Store for any error
        LDA #&7F
@@ -6955,7 +6962,7 @@ ENDIF
        STA &C230,Y
        DEY
        BPL LADD6
-       LDA &C317
+       LDA abs_workspace_current_drive
        STA &C233
        LDX &CF
        LDA &C3B6,X
@@ -7144,7 +7151,7 @@ ENDIF
        LDA &C23C
        INY
        STA (&B8),Y
-       ORA &C317
+       ORA abs_workspace_current_drive
        STA &C3B6,X
        JSR L8F91
        LDA #&08
@@ -7488,7 +7495,7 @@ ENDIF
        STA &C3C0,X
        INY
        LDA (&B6),Y
-       ORA &C317
+       ORA abs_workspace_current_drive
        STA &C3B6,X
        INY
        LDA (&B6),Y
@@ -7773,23 +7780,23 @@ ENDIF
        LDA &C2CD
        TAX
        PHA
-       LDA &C317
+       LDA abs_workspace_current_drive
        STA &C2CD
        LDY &C22F
        CPY #&FF
        BNE LB59C
        STA &C22F
        STY &C2CD
-.LB59C STX &C317
+.LB59C STX abs_workspace_current_drive
        JSR LB546
        LDY &C2CD
-       STY &C317
+       STY abs_workspace_current_drive
        CPY #&FF
        BNE LB5B5
        JSR chunk_22
        STY &C22F
 .LB5B5 PLA
-       CMP &C317
+       CMP abs_workspace_current_drive
        BEQ LB5C2
        JSR scsi_op_load_fsm
 .LB5C2 PLY
@@ -8046,7 +8053,7 @@ ENDIF
        STA &C22B,Y
        DEY
        BNE LB7EF
-       STY &C317
+       STY abs_workspace_current_drive
        STY &C21E
        STY &C21F
        STY &C220
@@ -8169,7 +8176,7 @@ ENDIF
        BNE LB904
 .LB915 LDA &C1FD
        JSR LB8A5
-       LDA &C317
+       LDA abs_workspace_current_drive
        ASL A
        ROL A
        ROL A
@@ -8179,7 +8186,7 @@ ENDIF
        JMP LB75E
 ;;
 .LB92B JSR chunk_47
-       LDA &C317
+       LDA abs_workspace_current_drive
        JSR LB946
        LDA #&00
        STA &B4
