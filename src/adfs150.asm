@@ -1733,13 +1733,11 @@ ENDIF
        RTS
 ;;
 ;;
-.LA4BD JSR LA49E
-       JSR LA4B1
+.LA4BD JSR chunk_32_a
        JSR L93DB
        BRA L89D8
 ;;
-.LA4C9 JSR LA49E
-       JSR LA4B1
+.LA4C9 JSR chunk_32_a
        JSR L943D
        BRA L89D8
 ;;
@@ -2766,9 +2764,7 @@ ENDIF
        LDA &C405
        PHP
        JSR L89D8
-       LDY #&03
-.L9159 JSR chunk_32
-       BPL L9159
+       JSR LA4B1
        PLP
        BEQ L9177
        JSR L836B
@@ -5094,8 +5090,20 @@ ENDIF
        STA (&B6),Y
        RTS
 
+.chunk_32_a
+       JSR LA49E
+.LA4B1
+.chunk_32_b
+       LDY #&03
 .chunk_32
+.chunk_32_loop
        LDA &C230,Y
+       ;; TODO: Can't we save a byte here by doing JSR sta_c22c_y_dey?
+       STA &C22C,Y
+       DEY
+       BPL chunk_32_loop
+       RTS
+
 .sta_c22c_y_dey
        STA &C22C,Y
        DEY
@@ -5739,10 +5747,6 @@ ENDIF
        jsr sta_c22c_y_dey
        BPL LA4A0
        BMI LA49B
-.LA4B1 LDY #&03
-.LA4B3 JSR chunk_32
-       BPL LA4B3
-       RTS
 ;;
 .LA4D5 LDY #&03
 .LA4D7 LDA &C31C,Y
@@ -6929,7 +6933,6 @@ ENDIF
        JSR L89D8
        LDY #&02
 .LAE06 JSR chunk_32
-       BPL LAE06
        LDA &C233
        STA &C22F
        JSR LB4DF
