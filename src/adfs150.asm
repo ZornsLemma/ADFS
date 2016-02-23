@@ -25,14 +25,41 @@ cb_drive_and_sector = 6 ;; 3 bytes, made up of
 cb_sector_count = 9 ;; 2 bytes
 cb_length = 11 ;; 4 bytes
 
+default_retries = &10
+
+;; Zero page workspace
+
+zp_current_retries = &CE
+
+;; &CD ADFS status flag
+;; --------------------
+zp_adfs_status_flag = &CD
+;; b7 Tube present
+;; b6 Tube being used
+as_tube_being_used = &40
+;; b5 Hard Drive present
+;; b4 FSM in memory inconsistant/being loaded
+;; b3 -
+;; b2 *OPT1 setting
+;; b1 Bad Free Space Map
+;; b0 Files being ensured
+as_files_being_ensured = &01
+
 ;; Workspace allocation
 ;; Shared workspace in Hazel starts at &C000. We claim up to &CE00-1.
 abs_workspace_top = &CE
 abs_workspace_free_space_map = &C000
+;; TODO: I am not sure abs_workspace_default_retries is needed; I don't see any
+;; way for it to be anything other than default_retries. If that's right, we
+;; could save a few bytes by doing LDA #default_retries instead of
+;; loading/storing to abs_workspace_default_retries.
+abs_workspace_default_retries = &C200
 abs_workspace_control_block = &C215
 abs_workspace_current_directory = &C400
+abs_workspace_park = &C900
 
 scsi_command_read = &08
+scsi_command_park = &1B
 
 ;; ROM HEADER
 ;; ==========
@@ -103,14 +130,14 @@ ENDIF
 ;; Claim Tube if present
 ;; ---------------------
 .L8020 LDY #&04
-       BIT &CD
+       BIT zp_adfs_status_flag
        BPL L8039        ;; Exit with no Tube present
 .L8026 LDA (&B0),Y      ;; Copy address to &C227-2A
        STA &C226,Y
        DEY
        BNE L8026
-       LDA #&40
-       TSB &CD          ;; Flag Tube being used
+       LDA #as_tube_being_used
+       TSB zp_adfs_status_flag ;; Flag Tube being used
 .L8032 LDA #&C4         ;; ADFS Tube ID=&04, &C0=Claim
        JSR &0406        ;; Claim Tube
        BCC L8032        ;; Loop until claim successful
@@ -119,12 +146,12 @@ ENDIF
 ;; Release Tube if used, and restore Screen settings
 ;; -------------------------------------------------
 .TUBE_RELEASE
-.L803A BIT &CD
+.L803A BIT zp_adfs_status_flag
        BVC L8047        ;; Tube not being used
        LDA #&84         ;; ADFS Tube ID=&04, &80=Release
        JSR &0406        ;; Release Tube
-       LDA #&40
-       TRB &CD          ;; Reset Tube being used flag
+       LDA #as_tube_being_used
+       TRB zp_adfs_status_flag ;; Reset Tube being used flag
 .L8047 LDA &C2D7        ;; Screen memory used?
        BEQ L804F        ;; Exit if screen unchanged
        STA &FE34        ;; Restore screen setting
@@ -228,8 +255,9 @@ ENDIF
 ;;
 ;; Initialise retries value
 ;; ------------------------
-.L8099 LDA &C200        ;; Get default retries
-       STA &CE          ;; Set current retries
+.init_retries
+.L8099 LDA abs_workspace_default_retries        ;; Get default retries
+       STA zp_current_retries          ;; Set current retries
        RTS
 ;;
 ;;
@@ -259,29 +287,30 @@ ENDIF
 ;;
 ;; On exit: A=result. 0=OK, <>0=error, with ADFS error block filled in
 ;;
-.L80A2 JSR L8328        ;; Wait for ensuring to complete
+.scsi_access
+.L80A2 JSR wait_for_ensuring ;; Wait for ensuring to complete
        STX &B0
        STY &B1          ;; &B0/1=>control block
-       JSR LA6FD        ;; Check if directory loaded
+       JSR check_loaded_directory ;; Check if directory loaded
 ;;
 ;; The SD driver either succeeds or fails, so we don't need any retry logic. We
-;; just fall straight through to L80DF where we make our one attempt at the
+;; just fall straight through to scsi_access_no_retry where we make our one attempt at the
 ;; operation.
 ;;
 IF NOT(PATCH_SD)
        LDY #&05
        LDA (&B0),Y      ;; Get Command
        CMP #&2F         ;; Verify?
-       BEQ L80DF        ;; Jump directly to do it
-       CMP #&1B         ;; Park?
-       BEQ L80DF        ;; Jump directly to do it
-       JSR L8099        ;; Set number of retries
+       BEQ scsi_access_no_retry ;; Jump directly to do it
+       CMP #scsi_command_park ;; Park?
+       BEQ scsi_access_no_retry ;; Jump directly to do it
+       JSR init_retries ;; Set number of retries
        BPL L80D7        ;; Jump into middle of retry loop
 ;;
 ;; This loop tries to access a drive. If the action returns 'Not ready' it
 ;; retries a number of times, allowing interuption by an Escape event.
 ;;
-.L80BD JSR L80DF        ;; Do the specified command
+.L80BD JSR scsi_access_no_retry ;; Do the specified command
        BEQ L8098        ;; Exit if ok
        CMP #&04         ;; Not ready?
        BNE L80D7        ;; Jump if result<>Not ready
@@ -296,14 +325,15 @@ IF NOT(PATCH_SD)
        DEY
        BNE L80C8        ;; Loop 25 times with Y
 .L80D7 CMP #&40         ;; Result=Write protected?
-       BEQ L80DF        ;; Abort immediately
-       DEC &CE          ;; Dec number of retries
+       BEQ scsi_access_no_retry ;; Abort immediately TODO: Actually try once more?
+       DEC zp_current_retries ;; Dec number of retries
        BPL L80BD        ;; Jump to try again
 ;;                                         Drop through to try once more
 ENDIF
 ;;
 ;; Try to access a drive
 ;; ---------------------
+.scsi_access_no_retry
 .L80DF LDY #&04
        LDA (&B0),Y      ;; Get Addr3
        TAX              ;; X=Addr3 - I/O or Language
@@ -413,7 +443,7 @@ ELIF PATCH_IDE
 .CommandLoop
        LDX #2
 .Twice                  ;; First pass to seek sector
-       BIT &CD
+       BIT zp_adfs_status_flag
        BVC CommandStart ;; Accessing I/O memory
        PHP
        PHX
@@ -431,7 +461,7 @@ ELIF PATCH_IDE
        JSR WaitForData
        AND #&21
        BNE TransDone
-       BIT &CD
+       BIT zp_adfs_status_flag
        BVS TransTube
        BCC IORead
 .IOWrite
@@ -539,7 +569,7 @@ ELSE
        BVC L816A        ;; Jump past with Read
        SEC              ;; CS=Write
 .L816A LDY #&00         ;; Initialise Y to 0
-       BIT &CD          ;; Accessing Tube?
+       BIT zp_adfs_status_flag ;; Accessing Tube?
        BVC L817C        ;; No, jump ahead to do the transfer
        LDX #&27
        LDY #&C2         ;; XY=>Tube address
@@ -553,7 +583,7 @@ ELSE
 ;; --------------------------------------
 .L817C JSR L8332        ;; Check SCSI status
        BMI L81AD        ;; Transfer finished
-       BIT &CD          ;; Check Tube/Direction flags
+       BIT zp_adfs_status_flag ;; Check Tube/Direction flags
        BVS L819B        ;; Jump for Tube transfer
        BCS L818E        ;; Jump for I/O read
 ;;
@@ -603,22 +633,11 @@ ELSE
        RTS              ;; Return with result in A
 ;;
 ;;
-;; &CD ADFS status flag
-;; --------------------
-;; b7 Tube present
-;; b6 Tube being used
-;; b5 Hard Drive present
-;; b4 FSM in memory inconsistant/being loaded
-;; b3 -
-;; b2 *OPT1 setting
-;; b1 Bad Free Space Map
-;; b0 Files being ensured
-;;
 ;;
 ;; Not Read or Write
 ;; -----------------
 .L81DB LDY #&00
-       BIT &CD
+       BIT zp_adfs_status_flag
        BVS L821F
 .L81E1 JSR L8332
        BMI L81AD
@@ -830,7 +849,7 @@ ENDIF
 .L82AA LDX #<abs_workspace_control_block
        LDY #>abs_workspace_control_block
 .scsi_op_using_control_block_yx
-.L82AE JSR L80A2        ;; Do a disk operation
+.L82AE JSR scsi_access  ;; Do a disk operation
        BEQ RTS2		;; Exit if OK	
 ;;
 ;; TODO: We can possibly get rid of the CMP #&25/BEQ in the SD card case, as
@@ -899,23 +918,29 @@ ENDIF
 ;;
 ;; Wait until any ensuring completed
 ;; =================================
+;; TODO: PATCH_SD and PATCH_IDE code nearly common? Not touching in this commit
+;; as the different .RTS2 label would break binary comparisons.
 IF PATCH_SD
-.L8328 LDA &CD
-       AND #&FE
-       STA &CD
+;; TODO: Could we use TRB here?
+.wait_for_ensuring
+.L8328 LDA zp_adfs_status_flag
+       AND #(NOT(as_files_being_ensured) AND &FF)
+       STA zp_adfs_status_flag
 .RTS2
        RTS
 ELIF PATCH_IDE
-.L8328 LDA &CD
-       AND #&FE
-       STA &CD
+.wait_for_ensuring
+.L8328 LDA zp_adfs_status_flag
+       AND #(NOT(as_files_being_ensured) AND &FF)
+       STA zp_adfs_status_flag
        RTS
 ELSE
-.L8328 LDA #&01         ;; Looking at bit 0
+.wait_for_ensuring
+.L8328 LDA #as_files_being_ensured ;; Looking at bit 0
        PHP              ;; Save IRQ disable
        CLI              ;; Enable IRQs for a moment
        PLP              ;; Restore IRQ disable
-       BIT &CD          ;; Check Ensure
+       BIT zp_adfs_status_flag ;; Check Ensure
        BNE L8328        ;; Loop back if set
        RTS
 ENDIF
@@ -1127,7 +1152,7 @@ ENDIF
                         ;; it depends if our callers rely on A=0
 .L84B0 STA &C100,Y
        STA &C000,Y
-       STA &C400,Y
+       STA abs_workspace_current_directory,Y
        INY
        BNE L84B0
 .RTS3
@@ -1851,7 +1876,7 @@ ENDIF
        ORA &C222        ;; Get Length2+Length3
        BEQ L8ABC        ;; Jump if remaining length<64k
 ;;
-       JSR L80A2        ;; Do a transfer
+       JSR scsi_access  ;; Do a transfer
        BNE RTS6         ;; Exit with any error
        LDA #&FF         ;; Update address
        JSR chunk_54
@@ -1883,7 +1908,7 @@ ENDIF
 .L8ABC LDA &C221        ;; Get Length1
        BEQ L8AC9        ;; Now less than 256 bytes to go
        STA &C21E        ;; Set Sector Count
-       JSR L80A2        ;; Do this transfer
+       JSR scsi_access  ;; Do this transfer
        BNE RTS7         ;; Exit with any error
 ;;
 .L8AC9 LDA &C220        ;; Get Length0
@@ -1896,11 +1921,11 @@ ENDIF
        LDA &C221        ;; Get last length transfered
        JSR chunk_56
        JSR chunk_54
-       JSR L8328        ;; Wait for ensuring to finish
-       JSR L8099        ;; Initialise retries
+       JSR wait_for_ensuring ;; Wait for ensuring to finish
+       JSR init_retries ;; Initialise retries
 .L8B00 JSR L8B09        ;; Call to load data
        BEQ RTS7         ;; All ok, so exit
-       DEC &CE          ;; Decrement retries
+       DEC zp_current_retries          ;; Decrement retries
        BPL L8B00        ;; Loop to try again
 ;;                                         Fall through to try once more
 .L8B09 LDX #&15         ;; Point to control block
@@ -2442,7 +2467,7 @@ ENDIF
        ADC #&01
        CLD
        STA &C8FA
-       STA &C400
+       STA abs_workspace_current_directory
        BRA L8EC3
 ;;
 .L8EF8 PLA
@@ -4146,8 +4171,8 @@ ENDIF
 ;;
 .L9B94 LDA #&06
        JSR L9A4C        ;; Tell current FS new FS taking over
-       LDA #&10
-       STA &C200
+       LDA #default_retries
+       STA abs_workspace_default_retries
        STZ &C2D7
 IF PATCH_SD
        STZ mmcstate%    ;; mark the mmc system as un-initialized
@@ -4480,7 +4505,7 @@ ENDIF
        INC &C317
        BEQ L9DA3
        DEC &C317
-.L9DA3 JSR L80A2
+.L9DA3 JSR scsi_access
        BPL L9DB0        ;; Jump to exit
 ;;
 .L9DA8 LDA &C21E        ;; Get Sector Count
@@ -4668,7 +4693,7 @@ ENDIF
 ;;
 ;; FSC 3 - *command
 ;; ================
-.L9ED3 JSR L8328
+.L9ED3 JSR wait_for_ensuring
        LDA #&A2
        JSR sta_b8_lda_c2_sta_b9
        JSR LA50D        ;; Skip spaces, etc
@@ -5312,9 +5337,9 @@ ELSE
        JSR LB210        ;; Do CLOSE#0
 .LA10E LDA #&60
        STA &C317        ;; Set drive to 3
-.LA113 LDX #<LA12A
-       LDY #>LA12A      ;; Point to control block
-       JSR L80A2        ;; Do command &1B - park heads
+.LA113 LDX #<control_block_park
+       LDY #>control_block_park ;; Point to control block
+       JSR scsi_access  ;; Do command &1B - park heads
        LDA &C317        ;; Get current drive
        SEC
        SBC #&20         ;; Step back one
@@ -5324,17 +5349,13 @@ ELSE
        STA &C317        ;; Restore current drive
        RTS
 ;;
+.control_block_park
 .LA12A EQUB &00
-       EQUB &00         ;; ;; &FFFFC900
-       EQUB &C9
-       EQUB &FF
-       EQUB &FF
-       EQUB &1B         ;; ;; Command &1B
-       EQUB &00         ;; ;; Drive 0, Sector 0
-       EQUB &00
-       EQUB &00
-       EQUB &00         ;; ;; Zero sector
-       EQUB &00
+       EQUW abs_workspace_park ;; &FFFFC900
+       EQUW &FFFF
+       EQUB scsi_command_park  ;; Command &1B
+       EQUB &00,&00,&00        ;; ;; Drive 0, Sector 0
+       EQUB &00,&00            ;; ;; Zero sector
 ENDIF
 ;;
 .LA135 JSR LA50D
@@ -5395,7 +5416,7 @@ ENDIF
 IF NOT(PATCH_SD)
        LDX #<LA1DF
        LDY #>LA1DF
-       JSR L80A2        ;; Do SCSI command &1B - Park
+       JSR scsi_access  ;; Do SCSI command &1B - Park
 ENDIF
        LDA #<(LA2EB-1)
        STA &B4
@@ -5604,7 +5625,7 @@ ENDIF
        JMP LA2DB
 ;;
 .LA377 JSR LB210
-       JSR L8328
+       JSR wait_for_ensuring
        LDA #&08
        TSB &CD
        JSR L98B3
@@ -6010,6 +6031,7 @@ ENDIF
 ;;
 ;; Check loaded directory
 ;; ----------------------
+.check_loaded_directory
 .LA6FD JSR chunk_52
        BNE LA72E        ;; Directory loaded, exit
        JSR L8372        ;; Generate error
@@ -6017,17 +6039,19 @@ ENDIF
        EQUS "No directory"
        EQUB &00
 ;;
-.LA714 JSR LA6FD        ;; Check if directory loaded
+.LA714 JSR check_loaded_directory ;; Check if directory loaded
        LDX #&00         ;; Point to first character to check
        LDA &C8FA        ;; Get initial character
-.LA71C CMP &C400,X      ;; Check "Hugo" string at start of dir
+{
+.loop  CMP abs_workspace_current_directory,X      ;; Check "Hugo" string at start of dir
        BNE LA72F        ;; Jump to give broken dir error
        CMP &C8FA,X      ;; Check "Hugo" string at end of dir
        BNE LA72F        ;; Jump to give broken dir error
        INX              ;; Move to next char
        LDA L84DC,X      ;; Get byte from "Hugo" string
        CPX #&05
-       BNE LA71C        ;; Loop for 4 characters
+       BNE loop         ;; Loop for 4 characters
+}
 .RTS13
 .LA72E RTS
 ;;
@@ -6306,7 +6330,7 @@ ENDIF
        JSR dex_4
        BPL LA994
        INC &C204
-       JSR L8328        ;; Wait for ensuring to complete
+       JSR wait_for_ensuring ;; Wait for ensuring to complete
        BRA LA98C        ;; Exit
 ;;
 ;; OSARGS Y<>0 - Info on open channel
@@ -6448,7 +6472,7 @@ IF PATCH_SD
        JMP setRandomAddress ;; Set the sector addess from &C201,X .. &C203,X        
 ELIF PATCH_IDE
 .LAAD9 PHA
-       JSR L8328        ;; Wait for ensuring to complete
+       JSR wait_for_ensuring ;; Wait for ensuring to complete
        JSR WaitNotBusy
        LDA #1           ;; one sector
        STA &FC42
@@ -6464,7 +6488,7 @@ ELIF PATCH_IDE
        JMP SetRandom
 ELSE
 .LAAD9 PHA
-       JSR L8328        ;; Wait for ensuring to complete
+       JSR wait_for_ensuring ;; Wait for ensuring to complete
        JSR L8080        ;; Set SCSI to command mode
        PLA
        JSR L831E        ;; Send command
@@ -6515,7 +6539,7 @@ ENDIF
        LDA &C203,X
        STA &C2D2
        JSR LB56C        ;; ?
-       JSR L8099        ;; Set default retries
+       JSR init_retries ;; Set default retries
        STX &C1
 IF INCLUDE_FLOPPY
        JSR chunk_38
@@ -6525,7 +6549,7 @@ IF INCLUDE_FLOPPY
 .LAB50 LDX &C1
        JSR LBA5D	;; SAVING: 3 bytes
        BEQ LAB86
-       DEC &CE
+       DEC zp_current_retries
        BPL LAB50
        JMP L82BD        ;; Generate disk error
 ENDIF
@@ -6558,7 +6582,7 @@ IF PATCH_IDE OR PATCH_SD
 ELSE
        BPL LAB76        ;; Jump ahead with writing
        JSR L81AD        ;; Release Tube, get SCSI status
-       DEC &CE          ;; Decrease retries
+       DEC zp_current_retries          ;; Decrease retries
        BPL LAB5E        ;; Loop to try again
        JMP L82BD        ;; Generate a disk error
 ENDIF
@@ -6737,7 +6761,7 @@ ENDIF
        JSR LB56C
        STY &B1
        STX &B0
-       JSR L8099
+       JSR init_retries
 .LACA8 LDX &B0
 IF INCLUDE_FLOPPY
        JSR chunk_38
@@ -6749,7 +6773,7 @@ IF INCLUDE_FLOPPY
 .LACB5 JSR LBA61	; SAVING: 3 bytes
        BEQ LACDA
 ENDIF
-.LACBA DEC &CE          ;; Decrement retries
+.LACBA DEC zp_current_retries          ;; Decrement retries
        BPL LACA8        ;; Loop to rey again
        JMP L82BD        ;; Generate a disk error
 ;;
@@ -7197,7 +7221,7 @@ ENDIF
        CMP &C298
        BEQ LB0BD
 ;;
-.LB06A JSR L8328
+.LB06A JSR wait_for_ensuring
        INC &C296
        BNE LB07A
        INC &C297
@@ -7573,7 +7597,7 @@ ENDIF
        BNE LB3F7        ;; Jump to close this channel
 .LB3EB DEX              ;; Loop for all channels
        BPL LB3E6
-       JSR L8328        ;; Wait until ensuring complete
+       JSR wait_for_ensuring ;; Wait until ensuring complete
        LDA #&00         ;; Clear A
        LDX &C5          ;; Restore X
        TAY              ;; Clear Y
