@@ -12,7 +12,7 @@ CPU 1
 ;; TODO: Use these named constants everywhere?
 ;; These constants are relevant for all control blocks everywhere
 control_block_full_size = 16
-control_block_size_excl_length = 10
+control_block_size_excl_length = 10 ;; TODO: poor name, it's not the size, it's the highest byte to copy
 
 ;; Offsets within a control block
 cb_result = 0
@@ -26,15 +26,21 @@ cb_sector_count = 9 ;; 2 bytes
 cb_length = 11 ;; 4 bytes
 
 ;; Workspace allocation
-workspace_control_block = &C215
-workspace_current_directory = &C400
+;; Shared workspace in Hazel starts at &C000. We claim up to &CE00-1.
+abs_workspace_top = &CE
+abs_workspace_free_space_map = &C000
+abs_workspace_control_block = &C215
+abs_workspace_current_directory = &C400
+
+scsi_command_read = &08
 
 ;; ROM HEADER
 ;; ==========
+.rom_header
        EQUB &00,&00,&00 ;; No language entry
-       JMP L9ACE        ;; Jump to service handler
+       JMP service_handler ;; Jump to service handler
        EQUB &82         ;; Service ROM, 6502 code
-       EQUB &17         ;; Offset to (C)
+       EQUB copyright_string - rom_header         ;; Offset to (C)
 IF PATCH_SD
        EQUB &57         ;; Binary version number
 ELIF PATCH_IDE
@@ -51,7 +57,8 @@ ELIF PATCH_IDE
 ELSE
        EQUS "150"       ;; Version string
 ENDIF
-       EQUB &00         ;; Copyright string
+.copyright_string
+       EQUB &00
        EQUS "(C)1984"
        EQUB &00
 IF TEST_SHIFT
@@ -819,10 +826,10 @@ ENDIF
 ;;
 ;; Do predefined SCSI operations
 ;; -----------------------------
-.scsi_op_using_workspace_control_block
-.L82AA LDX #<workspace_control_block
-       LDY #>workspace_control_block
-.scsi_op_using_yx
+.scsi_op_using_abs_workspace_control_block
+.L82AA LDX #<abs_workspace_control_block
+       LDY #>abs_workspace_control_block
+.scsi_op_using_control_block_yx
 .L82AE JSR L80A2        ;; Do a disk operation
        BEQ RTS2		;; Exit if OK	
 ;;
@@ -1547,26 +1554,23 @@ ENDIF
 
 ;;
 ;; Control block to load FSM
+.control_block_load_fsm
 .L8831 EQUB &01
-       EQUB &00
-       EQUB &C0
-       EQUB &FF
-       EQUB &FF
-       EQUB &08
-       EQUB &00
-       EQUB &00
-       EQUB &00
-       EQUB &02
+       EQUW abs_workspace_free_space_map ;; load here
+       EQUW &FFFF		         ;; in I/O processor
+       EQUB scsi_command_read
+       EQUB &00,&00,&00		         ;; load from sector 0
+       EQUB &02			         ;; load 2 sectors
 .L883B EQUB &00
 ;;
 ;; Control block to load '$'
 .control_block_load_root
 .L883C EQUB &01
-       EQUW workspace_current_directory ;; load here
-       EQUW &FFFF		        ;; in I/O processor
-       EQUB &08		                ;; read command
-       EQUB &00,&00,&02	                ;; load from sector 2
-       EQUW &0005	                ;; load 5 sectors
+       EQUW abs_workspace_current_directory ;; load here
+       EQUW &FFFF		            ;; in I/O processor
+       EQUB scsi_command_read
+       EQUB &00,&00,&02	                    ;; load from sector 2
+       EQUW &0005	                    ;; load 5 sectors
 ;;
 ;; Check drive character
 .L8847 CMP #&30
@@ -1625,7 +1629,7 @@ ENDIF
 .L88AA STA &C317        ;; Store in current drive
 .L88AD LDA #&10
        TSB &CD          ;; Flag FSM inconsistant
-       JSR ldx_ldy_l8331_jsr_l82ae
+       JSR scsi_op_load_fsm
        LDA #&10
        TRB &CD          ;; Flag FSM loaded
        LDA &C22E
@@ -1633,7 +1637,7 @@ ENDIF
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L88CC LDY #>control_block_load_root
        LDX #<control_block_load_root
-       JSR L82AE        ;; Load '$'
+       JSR scsi_op_using_control_block_yx ; Load '$'
        LDA #&02
        STA &C314        ;; Set CURR to &000002 - '$'
        STZ &C315
@@ -1663,7 +1667,7 @@ ENDIF
        LDA &C22E
        INC A
        JSR chunk_17
-       JSR L82AA
+       JSR scsi_op_using_abs_workspace_control_block
        BRA L88FD
 ;;
 .L897B LDY #&09
@@ -1750,29 +1754,31 @@ ENDIF
        STA &C317
        LDA #&FF
        STA &C22F
-       JSR ldx_ldy_l8331_jsr_l82ae
+       JSR scsi_op_load_fsm
 .L89EF LDA &C22E
        CMP #&FF
        BEQ L8A22
        TAX
 
 ;; Copy parameter block to load '$'
+{
        LDY #control_block_size_excl_length
-.L89F9 LDA control_block_load_root,Y
-       STA workspace_control_block,Y
+.loop  LDA control_block_load_root,Y
+       STA abs_workspace_control_block,Y
        DEY
-       BPL L89F9
+       BPL loop
+}
        STX &C316        ;; Copy parameters to &C215
-       STX workspace_control_block + cb_drive_sector_b16_20
+       STX abs_workspace_control_block + cb_drive_sector_b16_20
        LDA &C22D
        STA &C315
-       STA workspace_control_block + cb_sector_b8_15
+       STA abs_workspace_control_block + cb_sector_b8_15
        LDA &C22C
        STA &C314
-       STA workspace_control_block + cb_sector_b0_7
+       STA abs_workspace_control_block + cb_sector_b0_7
        LDA #&FF
        STA &C22E
-       JSR scsi_op_using_workspace_control_block
+       JSR scsi_op_using_abs_workspace_control_block
 .L8A22 LDA &CD
        STA &C320
        JSR LA744        ;; Get WS address in &BA
@@ -2518,7 +2524,7 @@ ENDIF
 
        JSR chunk_3
 
-       JSR L82AA
+       JSR scsi_op_using_abs_workspace_control_block
        JSR chunk_12
        LDA &C1FC
        STA &C322,X
@@ -2530,7 +2536,7 @@ ENDIF
        STA &C1FF        ;; Store sector 1 checksum
        LDX #<L907A     ;; Point to control block
        LDY #>L907A
-       JSR L82AE        ;; Save FSM
+       JSR scsi_op_using_control_block_yx ;; Save FSM
        LDA #&10
        TRB &CD          ;; Flag FSM loaded
        LDA #&00
@@ -3158,7 +3164,7 @@ ENDIF
        LDA &B7
        CMP #&94
        BEQ RTS9
-       JMP L82AA
+       JMP scsi_op_using_abs_workspace_control_block
 ;;
 ;; Fake entry for '$'
 ;; ==================
@@ -3432,7 +3438,7 @@ ENDIF
        STA &C21C
        LDA &C2A4
        STA &C21B
-       JSR L82AA
+       JSR scsi_op_using_abs_workspace_control_block
        LDA #&0A
        STA &C21A
        LDA &C2A8
@@ -3441,7 +3447,7 @@ ENDIF
        STA &C21C
        LDA &C2AA
        STA &C21B
-       JSR L82AA
+       JSR scsi_op_using_abs_workspace_control_block
        LDA &C2A5
        ORA &C2A6
        ORA &C2A7
@@ -3486,7 +3492,7 @@ ENDIF
 
        LDA #&05
        STA &C21E
-       JMP L82AE
+       JMP scsi_op_using_control_block_yx
 ;;
 .L97AE 
        STZ &C2AB
@@ -3955,7 +3961,7 @@ ENDIF
 ;;
 ;; High service call routines address-1 low bytes
 ;; ----------------------------------------------
-.L9AC0 EQUB <(L9CD9-1)                   ;; Serv21 - L9CD9 - High abs
+.L9AC0 EQUB <(claim_high_abs_workspace-1)  ;; Serv21 - L9CD9 - High abs
        EQUB <(L9CE0-1)                   ;; Serv22 - L9CE0 - High w/s
        EQUB <(L9AD5-1)                   ;; Serv23 - L9AD5 - Null
        EQUB <(L9CE8-1)                   ;; Serv24 - L9CE8 - Hazel count
@@ -3965,7 +3971,7 @@ ENDIF
 ;;
 ;; High service call routines address-1 high bytes
 ;; -----------------------------------------------
-.L9AC7 EQUB >(L9CD9-1)
+.L9AC7 EQUB >(claim_high_abs_workspace-1)
        EQUB >(L9CE0-1)
        EQUB >(L9AD5-1)
        EQUB >(L9CE8-1)
@@ -3976,6 +3982,7 @@ ENDIF
 ;; SERVICE CALL HANDLER
 ;; ====================
 ;;
+.service_handler
 .L9ACE BIT &0DF0,X      ;; Check ROM w/s byte
        BPL L9AD6        ;; &00-&7F -> Check bit6
        BVS L9AD8        ;; &C0-&FF -> ROM enabled
@@ -4303,10 +4310,14 @@ ENDIF
 ;;
 ;; Serv21 - Claim High Absolute Workspace
 ;; ======================================
-.L9CD9 CPY #&CE         ;; ADFS needs up to &CE00-1
-       BCS L9CDF        ;; Exit if Y>&CE
-       LDY #&CE         ;; ADFS needs up to &CE00-1
-.L9CDF RTS
+.claim_high_abs_workspace
+.L9CD9
+{
+       CPY #abs_workspace_top ;; ADFS needs up to here (minus 1 byte)
+       BCS rts                ;; Exit if absolute workspace already larger
+       LDY #abs_workspace_top ;; ADFS needs up to here (minus 1 byte)
+.rts   RTS
+}
 ;;
 ;; Serv22 - Claim High Private Workspace
 ;; =====================================
@@ -5059,6 +5070,8 @@ ENDIF
 .chunk_57_rts
        RTS
 
+;; TODO: This loop copies control_block_load_root to abs_workspace_control_block
+;; but it also copies 0 to &C214. What does &C214 signify?
 .chunk_59
        LDX #&0B
 .chunk_59_loop
@@ -5702,7 +5715,7 @@ ENDIF
        ;; We don't need this LDY #&00 now we have ORA (&B6) not ORA (&B6),Y.
        ;; LA45C does JSR L8C1B which immediately does LDY. L8BFB does JSR L836B
        ;; which does JSR L89D8. L89D8 will either LDY inside
-       ;; ldx_ldy_l8331_jsr_l82ae, or it will hit L89EF from where it will LDY
+       ;; scsi_op_load_fsm, or it will hit L89EF from where it will LDY
        ;; #&0A or hit L8A22 which will LDY.
        ;; LDY #&00
        ORA (&B6)
@@ -6136,17 +6149,17 @@ ENDIF
 .LA80D LDA &C26C,Y
        JSR chunk_60
        BPL LA80D
-       JMP L82AA
+       JMP scsi_op_using_abs_workspace_control_block
 ;;
 .LA821 JSR chunk_59
 .LA82E LDA &C270,Y
        JSR chunk_60
        BPL LA82E
-       JSR L82AA
-.ldx_ldy_l8331_jsr_l82ae
-       LDX #<L8831
-       LDY #>L8831
-       JMP L82AE        ;; Load FSM
+       JSR scsi_op_using_abs_workspace_control_block
+.scsi_op_load_fsm
+       LDX #<control_block_load_fsm
+       LDY #>control_block_load_fsm
+       JMP scsi_op_using_control_block_yx ;; Load FSM
 ;;
 .LA849 LDA #&7F
        JSR sta_b8_lda_c2_sta_b9
@@ -7711,7 +7724,7 @@ ENDIF
        JSR LB560
        EOR &C2C2
        BEQ LB545
-       JSR ldx_ldy_l8331_jsr_l82ae
+       JSR scsi_op_load_fsm
        BRA LB4E2
 ;;
 .LB560 LDA #&FF
@@ -7754,7 +7767,7 @@ ENDIF
 .LB5B5 PLA
        CMP &C317
        BEQ LB5C2
-       JSR ldx_ldy_l8331_jsr_l82ae
+       JSR scsi_op_load_fsm
 .LB5C2 PLY
        PLX
        RTS
