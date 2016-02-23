@@ -60,10 +60,10 @@ abs_workspace_park = &C900
 
 ;; ADFS Error Information:
 abs_workspace_error = &C2D0
-awe_sector_b0_b7 = 0 ;;   &C2D0 Sector b0-b7
+awe_sector_b0_7 = 0 ;;   &C2D0 Sector b0-b7
 awe_sector_b8_15 = 1 ;;   &C2D1 Sector b8-b15
-awe_sector_b16_19 = 2 ;;   &C2D2 Sector b16-b19 and Drive
-awe_error_scsi_error = 3   ;;   &C2D3 SCSI error number
+awe_drive_sector_b16_19 = 2 ;;   &C2D2 Sector b16-b19 and Drive
+awe_scsi_error = 3   ;;   &C2D3 SCSI error number
 awe_channel_num = 4  ;;   &C2D4 Channel number if &C2D3.b7=1
 awe_end = 4 
 ;;
@@ -368,15 +368,15 @@ IF INCLUDE_FLOPPY
        BEQ L8110        ;; Completed ok
        PHA              ;; Save result
        JSR chunk_14
-       STA &C2D2        ;; Store
+       STA abs_workspace_error+awe_drive_sector_b16_19        ;; Store
        INY
        LDA (&B0),Y      ;; Get Sector b8-b15
-       STA &C2D1
+       STA abs_workspace_error+awe_sector_b8_15
        INY
        LDA (&B0),Y      ;; Get Sector b0-b7
-       STA abs_workspace_error+awe_sector_b0_b7
+       STA abs_workspace_error+awe_sector_b0_7
        PLA              ;; Restore result
-       STA &C2D3        ;; Store
+       STA abs_workspace_error+awe_scsi_error        ;; Store
 .L8110 RTS
 ENDIF
 ;;
@@ -824,10 +824,10 @@ ELSE
        BPL L8275        ;; Loop to fetch four bytes, err, sec.hi, sec.mid, sec.lo
        LDA &C333
        AND #&E0
-       ORA &C2D2        ;; ORA drive number with current drive
-       STA &C2D2
+       ORA abs_workspace_error+awe_drive_sector_b16_19        ;; ORA drive number with current drive
+       STA abs_workspace_error+awe_drive_sector_b16_19
        JSR L8332        ;; Wait for SCSI
-       LDX &C2D3        ;; Get returned error number
+       LDX abs_workspace_error+awe_scsi_error        ;; Get returned error number
        LDA &FC40        ;; Get a byte from SCSI
        JSR L8332        ;; Wait for SCSI
        LDY &FC40        ;; Get another byte from SCSI
@@ -1022,7 +1022,7 @@ ENDIF
        STA &0100,Y
        DEX
        BPL L83A4
-       LDA &C2D2
+       LDA abs_workspace_error+awe_drive_sector_b16_19
        ASL A
        ROL A
        ROL A
@@ -1033,7 +1033,7 @@ ENDIF
        LDA #&2F
        INY
        STA &0100,Y
-       LDA &C2D2
+       LDA abs_workspace_error+awe_drive_sector_b16_19
        AND #&1F
        LDX #&02
        BNE L83CE
@@ -1942,11 +1942,11 @@ IF INCLUDE_FLOPPY
        BNE L8B4F        ;; Jump ahead if so
 .L8B2C LDA &C21B
        ORA &C317
-       STA &C2D2
+       STA abs_workspace_error+awe_drive_sector_b16_19
        LDA &C21C
-       STA &C2D1
+       STA abs_workspace_error+awe_sector_b8_15
        LDA &C21D
-       STA abs_workspace_error+awe_sector_b0_b7
+       STA abs_workspace_error+awe_sector_b0_7
        JSR LACE6
        STA &C204,X
        TXA
@@ -4528,7 +4528,7 @@ ENDIF
 ;;
 .L9DC0 CMP #&73
        BNE L9DD0
-       LDY #&04
+       LDY #awe_end
 .L9DC6 LDA abs_workspace_error,Y
        STA (&F0),Y
        DEY
@@ -6529,13 +6529,13 @@ ENDIF
        AND #&1E
        ROR A
        ORA #&30
-       STA &C2D4
+       STA abs_workspace_error+awe_channel_num
        LDA &C201,X
-       STA abs_workspace_error+awe_sector_b0_b7
+       STA abs_workspace_error+awe_sector_b0_7
        LDA &C202,X
-       STA &C2D1
+       STA abs_workspace_error+awe_sector_b8_15
        LDA &C203,X
-       STA &C2D2
+       STA abs_workspace_error+awe_drive_sector_b16_19
        JSR LB56C        ;; ?
        JSR init_retries ;; Set default retries
        STX &C1
@@ -6662,7 +6662,7 @@ ENDIF
 .LABB4 LDA &C331
        BEQ LABE6        ;; Jump forward to exit
        STZ &C331        ;; Clear the flag
-       LDX &C2D4
+       LDX abs_workspace_error+awe_channel_num
        JSR L8374        ;; Generate 'Data lost' error
        EQUB &CA         ;; ERR=202
        EQUS "Data lost, channel"
@@ -6747,13 +6747,13 @@ ENDIF
 .LAC7A LDX &C295
        LDA &C296
        STA &C201,X
-       STA abs_workspace_error+awe_sector_b0_b7
+       STA abs_workspace_error+awe_sector_b0_7
        LDA &C297
        STA &C202,X
-       STA &C2D1
+       STA abs_workspace_error+awe_sector_b8_15
        LDA &C298
        STA &C203,X
-       STA &C2D2
+       STA abs_workspace_error+awe_drive_sector_b16_19
        JSR LABD8
        LDA &C298
        JSR LB56C
