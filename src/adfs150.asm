@@ -911,7 +911,6 @@ ENDIF
        EQUS "Disc protected"
        EQUB &00
 ;;
-;; TODO: Look at dp11's optimisation suggestion (post Tue Feb 23, 2016 11:32 pm)
 IF NOT(PATCH_SD)        ;; Called only from Floppy and IDE code, not SD code
 .L831E JSR L833E	;; Wait until nor busy, then write command to command register
        BNE L82BD        ;; Generate disk error
