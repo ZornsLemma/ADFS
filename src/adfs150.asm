@@ -2387,12 +2387,13 @@ ENDIF
 ;;
 .check_dir_full_error
 .L8E24 LDA &C8B1
-       BEQ L8E36
+       BEQ dir_not_full
        JSR L836B
        EQUB &B3         ;; ERR=179
        EQUS "Dir full"
        EQUB &00
 ;;
+.dir_not_full
 .L8E36 LDA &B4
        STA &C227
        LDA &B5
