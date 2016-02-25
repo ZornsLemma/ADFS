@@ -5361,6 +5361,7 @@ ELSE
 }
 ;;
 .control_block_park
+.LA1DF
 .LA12A EQUB &00
        EQUW abs_workspace_park ;; &FFFFC900
        EQUW &FFFF
@@ -5426,8 +5427,8 @@ ENDIF
 .LA1A1 LDA &C26F        ;; Get drive
        STA abs_workspace_current_drive        ;; Set current drive
 IF NOT(PATCH_SD)
-       LDX #<LA1DF
-       LDY #>LA1DF
+       LDX #<control_block_park
+       LDY #>control_block_park
        JSR scsi_access  ;; Do SCSI command &1B - Park
 ENDIF
        LDA #<(LA2EB-1)
@@ -5449,20 +5450,6 @@ ENDIF
        STA &C31B
        LDX #&0A
        BRA LA189        ;; Set library name to "Unset"
-;;
-IF NOT(PATCH_SD)
-.LA1DF EQUB &00         ;; ;; Flag = &00
-       EQUB &00         ;; ;; &FFFFC900
-       EQUB &C9
-       EQUB &FF
-       EQUB &FF
-       EQUB &1B         ;; ;; Command &1B - Park
-       EQUB &00         ;; ;; Drive 0, Sector 0
-       EQUB &00
-       EQUB &00
-       EQUB &01         ;; ;; 1 sector
-       EQUB &00
-ENDIF
 ;;
 .LA1EA
        LDX #&03
