@@ -3523,6 +3523,8 @@ ENDIF
 
        LDA #&05
        STA &C21E
+       ;; TODO: Is this a bug? Should this use scsi_op_using_abs_workspace?
+       ;; (see dp11 post Thu Feb 25, 2016 9:22 pm)
        JMP scsi_op_using_control_block_yx
 ;;
 .L97AE 
