@@ -42,6 +42,7 @@ zp_adfs_status_flag = &CD
 as_tube_being_used = &40
 ;; b5 Hard Drive present
 ;; b4 FSM in memory inconsistant/being loaded
+as_fsm_inconsistent = &10
 ;; b3 -
 ;; b2 *OPT1 setting
 ;; b1 Bad Free Space Map
@@ -78,6 +79,7 @@ scsi_command_park = &1B
 scsi_command_verify = &2F
 
 scsi_error_not_ready = &04
+scsi_error_floppy_protected = &40 ;; Floppy drive error &10 (WRPROT)
 
 ;; ROM HEADER
 ;; ==========
@@ -426,7 +428,7 @@ IF PATCH_SD
 include "SD_Driver.asm"
 
 ELIF PATCH_IDE
-       LDY #5           ;; Get command, CC=Read, CS=Write
+       LDY #cb_command  ;; Get command, CC=Read, CS=Write
        LDA (zp_control_block_ptr),Y
        CMP #&09
        AND #&FD         ;; Jump if Read (&08) or Write (&0A)
@@ -721,7 +723,7 @@ ELIF PATCH_IDE
        LDA (zp_control_block_ptr),Y
 .SetCommand
 		        ;; Convert &08/&0A to &20/&30
-		        ;; 08            0A
+		        ;; 08 00001000   0A 00001010
        ASL A	        ;; 10 00010000   14 00010100
        ASL A		;; 20 00100000   28 00101000
        ASL A	        ;; 40 01000000	 50 01010000
@@ -869,7 +871,7 @@ ENDIF
        CMP #&65         ;; Floppy error &25 (Bad drive)
        BEQ L82B4        ;; Jump to give 'Not found' error
        CMP #&6F         ;; Floppy error &2F (Abort)?
-       BNE L82DC        ;; If no, report a disk error
+       BNE check_drive_ready ;; If no, report a disk error
 ;;
 .L82C9 JSR L849A
 .L82CC LDA #&7E
@@ -884,29 +886,32 @@ ENDIF
 .L82B4 JSR chunk_22
        JMP L8BE2        ;; Not Found error
 ;;
+.check_drive_ready
 .L82DC 
 ;; SD card can't ever not be ready
 IF NOT(PATCH_SD)
-       CMP #&04         ;; Hard drive error &04 (Not ready)?
-       BNE L82F4        ;; No, try other errors
+       CMP #scsi_error_not_ready ;; Hard drive error &04 (Not ready)?
+       BNE check_floppy_protected ;; No, try other errors
        JSR L836B        ;; Generate an error "Drive not ready"
        EQUB &CD         ;; ERR=205
        EQUS "Drive not ready"
        EQUB &00
 ENDIF
 ;;
-.L82F4 CMP #&40         ;; Floppy drive error &10 (WRPROT)?
-       BEQ L830B        ;; Jump to report "Disk protected"
+.check_floppy_protected
+       CMP #scsi_error_floppy_protected ;; Floppy drive error &10 (WRPROT)?
+       BEQ floppy_protected ;; Jump to report "Disk protected"
                         ;; All other results, give generic
                         ;; error message
        JSR L89D8
        TAX
-       JSR L8374
+       JSR generate_data_lost_error
        EQUB &C7         ;; ERR=199
        EQUS "Disc error"
        EQUB &00
 ;;
-.L830B JSR L834E        ;; Generate an error
+.floppy_protected
+       JSR L834E        ;; Generate an error
        EQUB &C9         ;; ERR=201
        EQUS "Disc protected"
        EQUB &00
@@ -996,12 +1001,13 @@ ENDIF
        TRB &CD
 .L8372 LDX #&00
 ;;
+.generate_data_lost_error
 .L8374 PLA
        STA &B2
        PLA
        STA &B3
-       LDA #&10
-       TRB &CD
+       LDA #as_fsm_inconsistent
+       TRB zp_adfs_status_flag
        LDY #&00
 .L8380 INY
        LDA (&B2),Y
@@ -6671,7 +6677,7 @@ ENDIF
        BEQ LABE6        ;; Jump forward to exit
        STZ &C331        ;; Clear the flag
        LDX abs_workspace_error+awe_channel_num
-       JSR L8374        ;; Generate 'Data lost' error
+       JSR generate_data_lost_error ;; Generate 'Data lost' error
        EQUB &CA         ;; ERR=202
        EQUS "Data lost, channel"
        EQUB &00
