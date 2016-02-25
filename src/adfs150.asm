@@ -4855,7 +4855,11 @@ ENDIF
 
 .chunk_12
        LDA abs_workspace_current_drive
-       JMP LB5C5        ;; X=(A DIV 16)
+;; X=(A DIV 16)
+.LB5C5 JSR lsr_a_4
+       TAX
+       RTS
+;;
 
 .chunk_13
        ORA &0D5C
@@ -7802,10 +7806,6 @@ ENDIF
        JSR scsi_op_load_fsm
 .LB5C2 PLY
        PLX
-       RTS
-;;
-.LB5C5 JSR lsr_a_4
-       TAX
        RTS
 ;;
 .LB5CB JSR LA77F
