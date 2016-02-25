@@ -64,7 +64,7 @@ abs_workspace_free_space_map = &C000
 abs_workspace_default_retries = &C200
 abs_workspace_control_block = &C215
 abs_workspace_current_drive = &C317 ;; &FF=no current drive
-abs_workspace_opt1_setting = &C320 ;; TODO: why do we have this as well as zp_adfs_status_flag?
+abs_workspace_adfs_status_flag = &C320
 abs_workspace_current_directory = &C400
 abs_workspace_park = &C900
 
@@ -1823,7 +1823,7 @@ ENDIF
        STA &C22E
        JSR scsi_op_using_abs_workspace_control_block
 .L8A22 LDA zp_adfs_status_flag
-       STA abs_workspace_opt1_setting
+       STA abs_workspace_adfs_status_flag
        JSR LA744        ;; Get WS address in &BA
        LDY #&FB
 .L8A2C LDA &C300,Y      ;; Copy workspace to private
@@ -4233,7 +4233,7 @@ ENDIF
        BNE L9BF0        ;; Loop for 252 bytes
        LDA (&BA),Y      ;; Do zeroth byte
        STA &C300,Y
-       LDA abs_workspace_opt1_setting ;; Get *OPT1 setting
+       LDA abs_workspace_adfs_status_flag ;; Get *OPT1 setting
        AND #as_fsm_opt1
        STA zp_adfs_status_flag ;; Put into &CD
        JSR LA7D4        ;; Check some settings
