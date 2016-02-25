@@ -2870,6 +2870,7 @@ ENDIF
        CMP #&C8
        BNE L9228
        JSR L84E1
+.chunk_63
        JSR L8F91
        JMP L89D5
 ;;
@@ -7582,8 +7583,7 @@ ENDIF
        STY &B9
        JSR L89D8
        JSR L8F57
-       JSR L8F91
-       JSR L89D5
+       JSR chunk_63
        LDA &C240
        STA &B4
        LDA &C241
