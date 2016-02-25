@@ -45,6 +45,7 @@ as_tube_being_used = &40
 as_fsm_inconsistent = &10
 ;; b3 -
 ;; b2 *OPT1 setting
+as_fsm_opt1 = &04
 ;; b1 Bad Free Space Map
 ;; b0 Files being ensured
 as_files_being_ensured = &01
@@ -60,6 +61,7 @@ abs_workspace_free_space_map = &C000
 abs_workspace_default_retries = &C200
 abs_workspace_control_block = &C215
 abs_workspace_current_drive = &C317 ;; &FF=no current drive
+abs_workspace_opt1_setting = &C320 ;; TODO: why do we have this as well as zp_adfs_status_flag?
 abs_workspace_current_directory = &C400
 abs_workspace_park = &C900
 
@@ -1000,8 +1002,8 @@ ENDIF
 .L8365 LDA abs_workspace_current_drive
        STA &C22F
 .L836B JSR L89D8
-       LDA #&10
-       TRB &CD
+       LDA #as_fsm_inconsistent
+       TRB zp_adfs_status_flag
 .L8372 LDX #&00
 ;;
 .generate_data_lost_error
@@ -1665,11 +1667,11 @@ ENDIF
        LDA &C2D8        ;; Get CMOS byte RAM copy
        AND #&80         ;; Get hard drive flag
 .L88AA STA abs_workspace_current_drive        ;; Store in current drive
-.L88AD LDA #&10
-       TSB &CD          ;; Flag FSM inconsistant
+.L88AD LDA #as_fsm_inconsistent
+       TSB zp_adfs_status_flag ;; Flag FSM inconsistant
        JSR scsi_op_load_fsm
-       LDA #&10
-       TRB &CD          ;; Flag FSM loaded
+       LDA #as_fsm_inconsistent
+       TRB zp_adfs_status_flag ;; Flag FSM loaded
        LDA &C22E
        BPL L88CC
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
@@ -1817,8 +1819,8 @@ ENDIF
        LDA #&FF
        STA &C22E
        JSR scsi_op_using_abs_workspace_control_block
-.L8A22 LDA &CD
-       STA &C320
+.L8A22 LDA zp_adfs_status_flag
+       STA abs_workspace_opt1_setting
        JSR LA744        ;; Get WS address in &BA
        LDY #&FB
 .L8A2C LDA &C300,Y      ;; Copy workspace to private
@@ -4228,8 +4230,8 @@ ENDIF
        BNE L9BF0        ;; Loop for 252 bytes
        LDA (&BA),Y      ;; Do zeroth byte
        STA &C300,Y
-       LDA &C320        ;; Get *OPT1 setting
-       AND #&04
+       LDA abs_workspace_opt1_setting ;; Get *OPT1 setting
+       AND #as_fsm_opt1
        STA &CD          ;; Put into &CD
        JSR LA7D4        ;; Check some settings
 IF PATCH_SD
