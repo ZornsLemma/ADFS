@@ -3015,8 +3015,7 @@ ENDIF
 .L9309 LDA #&28
        JSR LA03C        ;; Print '('
        LDY #&19
-       LDA (&B6),Y      ;; Get cycle number
-       JSR L9322        ;; Print it
+       JSR chunk_65     ;; Get cycle number and print it
        LDA #&29
        JSR LA03C        ;; Print ')'
        JMP LA036        ;; Finish with a space
@@ -3025,6 +3024,8 @@ ENDIF
 ;; ===========
 .L931D EQUS "RWLDE"
 ;;
+.chunk_65
+       LDA (&B6),Y
 .L9322 PHA
        JSR lsr_a_4
        JSR L932B
@@ -3255,8 +3256,7 @@ ENDIF
 ;;
 .L9522 CPX #&16
        BEQ L952B
-       LDA (&B6),Y
-       JSR L9322
+       JSR chunk_65
 .L952B TXA
        AND #&03
        CMP #&01
