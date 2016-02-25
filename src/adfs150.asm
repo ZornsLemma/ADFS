@@ -307,6 +307,9 @@ ENDIF
 ;;
 ;; On exit: A=result. 0=OK, <>0=error, with ADFS error block filled in
 ;;
+.scsi_access_using_abs_workspace_control_block
+       LDX #<abs_workspace_control_block
+       LDY #>abs_workspace_control_block
 .scsi_access
 .L80A2 JSR wait_for_ensuring ;; Wait for ensuring to complete
        STX zp_control_block_ptr
@@ -1875,9 +1878,7 @@ ENDIF
 ;;
 ;; Length is now a whole number of sectors, a whole multiple of 256 bytes
 ;;
-.L8A68 LDX #&15
-       LDY #&C2         ;; XY=>control block
-       LDA #&FF
+.L8A68 LDA #&FF
        STA &C21E        ;; Set initial sector count to &FF
 ;;
 ;; Transfer batches of &FF00 bytes until less than 64k left
@@ -1886,7 +1887,7 @@ ENDIF
        ORA &C222        ;; Get Length2+Length3
        BEQ L8ABC        ;; Jump if remaining length<64k
 ;;
-       JSR scsi_access  ;; Do a transfer
+       JSR scsi_access_using_abs_workspace_control_block  ;; Do a transfer
        BNE RTS6         ;; Exit with any error
        LDA #&FF         ;; Update address
        JSR chunk_54
@@ -1918,7 +1919,7 @@ ENDIF
 .L8ABC LDA &C221        ;; Get Length1
        BEQ L8AC9        ;; Now less than 256 bytes to go
        STA &C21E        ;; Set Sector Count
-       JSR scsi_access  ;; Do this transfer
+       JSR scsi_access_using_abs_workspace_control_block  ;; Do this transfer
        BNE RTS7         ;; Exit with any error
 ;;
 .L8AC9 LDA &C220        ;; Get Length0
@@ -4508,12 +4509,10 @@ ENDIF
        CMP #&08         ;; Is it &08 or &0A, Read or Write?
        BEQ L9DA8        ;; Jump forward with Read and Write
 ;;
-.L9D97 LDX #&15
-       LDY #&C2
-       INC abs_workspace_current_drive
+.L9D97 INC abs_workspace_current_drive
        BEQ L9DA3
        DEC abs_workspace_current_drive
-.L9DA3 JSR scsi_access
+.L9DA3 JSR scsi_access_using_abs_workspace_control_block
        BPL L9DB0        ;; Jump to exit
 ;;
 .L9DA8 LDA &C21E        ;; Get Sector Count
