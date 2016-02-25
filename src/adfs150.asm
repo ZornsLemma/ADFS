@@ -2948,6 +2948,8 @@ ENDIF
        BNE L92A1
        RTS
 ;;
+.chunk_64
+       JSR L928F
 .L92A8 PLA
        STA &B6
        PLA
@@ -3036,8 +3038,7 @@ ENDIF
        LDA #&C8
        STA &B7
        LDX #&13
-       JSR L928F
-       JSR L92A8
+       JSR chunk_64
        EQUB &20, &A8
        LDA &C8FA
        JSR L9322
@@ -3055,8 +3056,7 @@ ENDIF
        LDA #>L9A68
        STA &B7
        LDX #&0D
-       JSR L928F
-       JSR L92A8
+       JSR chunk_64
        EQUS "Option", &A0
        LDA &C1FD
        JSR L9322
@@ -3068,23 +3068,20 @@ ENDIF
        LDA #>L9426
        STA &B7
        LDX #&04
-       JSR L928F
-       JSR L92A8
+       JSR chunk_64
        EQUS ")",&0D,"Dir.",&A0
        STZ &B6
        LDA #&C3
        STA &B7
        LDX #&0A
-       JSR L928F
-       JSR L92A8
+       JSR chunk_64
        EQUS "     Lib.",&A0
        LDA #&0A
        STA &B6
        LDA #&C3
        STA &B7
        LDX #&0A
-       JSR L928F
-       JSR L92A8
+       JSR chunk_64
        EQUB &0D,&8D
 .L93CC 
 .chunk_42
