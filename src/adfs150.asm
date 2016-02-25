@@ -1787,6 +1787,9 @@ ENDIF
 .LA4C9 JSR chunk_32_a
        JSR L943D
        BRA L89D8
+
+.chunk_63
+       JSR L8F91
 ;;
 .L89D5 LDA &C2C0
 ;;
@@ -2882,9 +2885,7 @@ ENDIF
        CMP #&C8
        BNE L9228
        JSR L84E1
-.chunk_63
-       JSR L8F91
-       JMP L89D5
+       JMP chunk_63
 ;;
 ;;
 ;; OSFILE
