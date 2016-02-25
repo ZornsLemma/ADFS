@@ -5142,7 +5142,6 @@ ENDIF
 .chunk_32
 .chunk_32_loop
        LDA &C230,Y
-       ;; TODO: Can't we save a byte here by doing JSR sta_c22c_y_dey?
        STA &C22C,Y
        DEY
        BPL chunk_32_loop
