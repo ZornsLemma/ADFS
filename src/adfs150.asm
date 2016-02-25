@@ -38,12 +38,15 @@ zp_escape_flag = &FF ;; bit 7
 ;; --------------------
 zp_adfs_status_flag = &CD
 ;; b7 Tube present
+as_tube_present = &80
 ;; b6 Tube being used
 as_tube_being_used = &40
 ;; b5 Hard Drive present
+as_hard_drive_present = &20
 ;; b4 FSM in memory inconsistant/being loaded
 as_fsm_inconsistent = &10
 ;; b3 -
+as_something = &08 ;; TODO: What's this bit signify?
 ;; b2 *OPT1 setting
 as_fsm_opt1 = &04
 ;; b1 Bad Free Space Map
@@ -2016,7 +2019,7 @@ ELSE
        CPY #&06
        BNE L8B81
 ENDIF
-       BIT &CD          ;; Check Tube flags
+       BIT zp_adfs_status_flag ;; Check Tube flags
        BVC L8B9B        ;; Tube not being used, jump ahead
        PHX              ;; Save byte count in X
        LDX #&27
@@ -2045,7 +2048,7 @@ ELSE
 .L8BA2 LDA &FC40        ;; Get byte from SCSI
        CPX #&00         ;; No more bytes left?
        BEQ L8BB8        ;; Jump to ignore extra bytes
-       BIT &CD          ;; Tube or I/O?
+       BIT zp_adfs_status_flag ;; Tube or I/O?
        BVC L8BB5        ;; Jump to read to I/O memory
        JSR L821B        ;; Pause a bit
        STA &FEE5        ;; Send to Tube
@@ -2576,8 +2579,8 @@ ENDIF
        LDX #<L907A     ;; Point to control block
        LDY #>L907A
        JSR scsi_op_using_control_block_yx ;; Save FSM
-       LDA #&10
-       TRB &CD          ;; Flag FSM loaded
+       LDA #as_fsm_inconsistent
+       TRB zp_adfs_status_flag ;; Flag FSM loaded
        LDA #&00
        RTS
 ;;
@@ -3238,8 +3241,8 @@ ENDIF
        RTS
 
 ;;
-.L9501 LDA &CD
-       AND #&04
+.L9501 LDA zp_adfs_status_flag
+       AND #as_fsm_opt1
        BEQ RTS8
 ;;
 .L9508 JSR L92E5        ;; Print filename
@@ -3426,8 +3429,8 @@ ENDIF
        STA &C31C,Y
        DEY
        BPL L96A3
-.L96AC LDA &CD
-       AND #&08
+.L96AC LDA zp_adfs_status_flag
+       AND #as_something
        BNE L96B8
        JSR L8F91
        JSR LA992
@@ -3514,8 +3517,8 @@ ENDIF
        RTS
 
 ;;
-.L9783 LDA &CD
-       AND #&08
+.L9783 LDA zp_adfs_status_flag
+       AND #as_something
        BNE RTS11
 ;;
 .L978A LDA #&C4
@@ -4232,15 +4235,15 @@ ENDIF
        STA &C300,Y
        LDA abs_workspace_opt1_setting ;; Get *OPT1 setting
        AND #as_fsm_opt1
-       STA &CD          ;; Put into &CD
+       STA zp_adfs_status_flag ;; Put into &CD
        JSR LA7D4        ;; Check some settings
 IF PATCH_SD
 ELSE
        JSR L9A6C        ;; Check if SCSI hardware present
        BNE L9C10        ;; No SCSI hardware, jump forward
 ENDIF
-       LDA #&20
-       TSB &CD          ;; Signal hard drive present
+       LDA #as_hard_drive_present
+       TSB zp_adfs_status_flag ;; Signal hard drive present
 .L9C10 PLA              ;; Get selection flag from stack
        CMP #&43         ;; '*fadfs'/F-Break type of selection?
        BNE L9C18        ;; No, jump to keep context
@@ -4298,11 +4301,11 @@ ENDIF
 .L9C7A JSR L89D8
 .L9C7D LDA #&EA
        JSR L84C4
-       LDA #&80
-       TRB &CD
+       LDA #as_tube_present
+       TRB zp_adfs_status_flag
        INX
        BNE L9C8B
-       TSB &CD
+       TSB zp_adfs_status_flag
 .L9C8B PLA              ;; Get boot flag
        PHA
        BNE L9CA8        ;; No boot, jump forward
@@ -4549,7 +4552,7 @@ ENDIF
        BNE L9DE3
        LDA &C8FA
        STA (&F0)
-       LDA &CD
+       LDA zp_adfs_status_flag
        LDY #&01
        STA (&F0),Y
        BRA L9DB4
@@ -4993,8 +4996,8 @@ ENDIF
        RTS
 
 .chunk_38
-       LDA &CD          ;; Get ADFS I/O status
-       AND #&20         ;; Hard drive present?
+       LDA zp_adfs_status_flag ;; Get ADFS I/O status
+       AND #as_hard_drive_present ;; Hard drive present?
        RTS
 
 .chunk_40
@@ -5222,12 +5225,12 @@ ENDIF
        BEQ LA00F
        DEX
        BNE LA016
-       LDA #&04
-       TSB &CD
+       LDA #as_fsm_opt1
+       TSB zp_adfs_status_flag
        TYA
        BNE LA013
-.LA00F LDA #&04
-       TRB &CD
+.LA00F LDA #as_fsm_opt1
+       TRB zp_adfs_status_flag
 .LA013 JMP L89D8
 ;;
 .LA016 CPX #&03
@@ -5628,11 +5631,11 @@ ENDIF
 ;;
 .LA377 JSR LB210
        JSR wait_for_ensuring
-       LDA #&08
-       TSB &CD
+       LDA #as_something
+       TSB zp_adfs_status_flag
        JSR L98B3
-       LDA #&08
-       TRB &CD
+       LDA #as_something
+       TRB zp_adfs_status_flag
        RTS
 ;;
 .LA389 LDA &C215,X
@@ -5755,7 +5758,7 @@ ENDIF
 .LA46D LDA #&01
        JMP (&C2A8)
 ;;
-.LA472 BIT &CD
+.LA472 BIT zp_adfs_status_flag
        BPL LA46D
        JSR L8032
        LDX #&A8
@@ -6275,8 +6278,8 @@ ENDIF
        SEC
        SBC &C260
        STA &C261
-       LDA #&08
-       TSB &CD
+       LDA #as_something
+       TSB zp_adfs_status_flag
        LDA &C26F
        ORA &C2A4
        STA &C2A4
@@ -6613,8 +6616,8 @@ ELSE
        INY
        BNE LAB76        ;; Loop for 256 bytes
 ENDIF
-       LDA #&01
-       TSB &CD
+       LDA #as_files_being_ensured
+       TSB zp_adfs_status_flag
        DEY
 IF PATCH_IDE OR PATCH_SD
                         ;; Don't trample on IDE register
@@ -6637,9 +6640,9 @@ IF PATCH_IDE OR PATCH_SD
        LDA #&7F
        RTS
 ELSE
-.LAB89 LDA &CD          ;; Get flags
-       AND #&21         ;; Check for hard drive+IRQ pending
-       CMP #&21
+.LAB89 LDA zp_adfs_status_flag ;; Get flags
+       AND #(as_hard_drive_present or as_files_being_ensured) ;; Check for hard drive+IRQ pending
+       CMP #(as_hard_drive_present or as_files_being_ensured)
        BNE LAB98        ;; No hard drive or IRQ pending
        JSR L806F        ;; Get SCSI status
        CMP #&F2
@@ -6650,8 +6653,8 @@ ENDIF
 ;;
 .LAB9B PHY              ;; Send something to SCSI
        STZ &FC43
-       LDA #&01
-       TRB &CD
+       LDA #as_files_being_ensured
+       TRB zp_adfs_status_flag
        LDA &FC40
 IF NOT(PATCH_SD)
        JSR L8332
@@ -7149,8 +7152,8 @@ ENDIF
        ORA abs_workspace_current_drive
        STA &C3B6,X
        JSR L8F91
-       LDA #&08
-       TRB &CD
+       LDA #as_something
+       TRB zp_adfs_status_flag
        LDA #&C4
        STA &C260
        LDA #&09
@@ -8083,7 +8086,7 @@ ENDIF
        JSR chunk_35
        JMP LB758
 ;;
-.LB86B BIT &CD
+.LB86B BIT zp_adfs_status_flag
        BPL LB898
 
        JSR chunk_7
@@ -8095,8 +8098,8 @@ ENDIF
 .LB885 PHP
        SEI
        JSR L8032
-       LDA #&40
-       TSB &CD
+       LDA #as_tube_being_used
+       TSB zp_adfs_status_flag
        LDA #&01
        LDX #&B8
        LDY #&C2
@@ -8111,9 +8114,9 @@ ENDIF
 ;;
 .chunk_47
        JSR LB86B
-       LDA #&01
+       LDA #as_files_being_ensured
        ;; fall through to LB8A5
-.LB8A5 BIT &CD
+.LB8A5 BIT zp_adfs_status_flag
        BVC LB8AD
        STA &FEE5
        RTS
@@ -8265,7 +8268,7 @@ ENDIF
        CMP &C2B7
        BEQ RTS14
 ;;
-.LB9D3 BIT &CD
+.LB9D3 BIT zp_adfs_status_flag
        BPL LBA03
 
        JSR chunk_7
@@ -8274,8 +8277,8 @@ ENDIF
        LDA &C2BB
        INC A
        BEQ LBA03
-.LB9ED LDA #&40
-       TSB &CD
+.LB9ED LDA #as_tube_being_used
+       TSB zp_adfs_status_flag
        JSR L8032
        JSR chunk_34
        LDA #&00
@@ -8294,7 +8297,7 @@ ENDIF
        LDY &C2B6
        PHP
 .LBA1C PLP
-       BIT &CD
+       BIT zp_adfs_status_flag
        BVS LBA2F
        BCC LBA29
        LDA (&BE),Y
@@ -8457,7 +8460,7 @@ IF INCLUDE_FLOPPY
        BNE LBB91
 .LBB8D CMP #&FF
        BEQ LBB98
-.LBB91 BIT &CD
+.LBB91 BIT zp_adfs_status_flag
        BPL LBB98
        JSR L8020
 .LBB98 LDY #&05
@@ -8499,7 +8502,7 @@ IF INCLUDE_FLOPPY
        ORA #&20
        STA &C2E0
        STA &A1
-       LDA &CD
+       LDA zp_adfs_status_flag
        STA &0D5D
        ;; SAVING: 3 bytes
 ;;
@@ -8520,7 +8523,7 @@ IF INCLUDE_FLOPPY
        BMI LBC39
        LDA #&5F
        STA &0D00+(nmi_and_imm+1-nmi_handler_start)
-.LBC39 BIT &CD
+.LBC39 BIT zp_adfs_status_flag
        BVC LBC48
        LDA &A1
        AND #&FD
@@ -8731,7 +8734,7 @@ endif
        STZ &A3
        LDA &C2E2
        STA &A4
-       BIT &CD
+       BIT zp_adfs_status_flag
        BVC LBDAB
        LDY #&00
 .LBD99 LDA (&A3),Y
