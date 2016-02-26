@@ -8134,6 +8134,10 @@ ENDIF
 .LB8B9 LDY &BC
        RTS
 ;;
+.chunk_67
+       STA &B4
+       LDA #&C3
+       STA &B5
 .LB8BC LDA #&0A
        JSR LB8A5
        SEC
@@ -8190,10 +8194,7 @@ ENDIF
        LDA abs_workspace_current_drive
        JSR LB946
        LDA #&00
-       STA &B4
-       LDA #&C3
-       STA &B5
-       JSR LB8BC
+       JSR chunk_67
        BMI LB925
 .LB946 ASL A
        ROL A
@@ -8206,10 +8207,7 @@ ENDIF
        LDA &C31B
        JSR LB946
        LDA #&0A
-       STA &B4
-       LDA #&C3
-       STA &B5
-       JSR LB8BC
+       JSR chunk_67
        BMI LB925
 .LB96A JSR LB86B
        STZ &C2B5
