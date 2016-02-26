@@ -8702,10 +8702,6 @@ endif
        STA &A0
        JMP LBFB7
 ;;
-.LBD40 LDA #&10
-       TSB &0D5E        ;; Set side 1
-       RTS
-;;
 .LBD46 LDA #&01
 .trb_a2_rts
        TRB &A2
@@ -8969,7 +8965,10 @@ endif
        JSR chunk_11
        BMI LBFB6        ;; Side 0, leave track as 0-79
        STA &A5          ;; Store track 0-79
-       JMP LBD40        ;; Set side 1
+;;
+.LBD40 LDA #&10
+       TSB &0D5E        ;; Set side 1
+       RTS
 ;;
 ;; Divide by 16
 ;; ============
