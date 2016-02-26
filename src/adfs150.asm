@@ -384,7 +384,29 @@ IF INCLUDE_FLOPPY
 ;;
 ;; Access a floppy drive
 ;; ---------------------
-.L80F0 JSR LBB46        ;; Do floppy operation SAVING: 3 bytes
+.L80F0                  ;; Do floppy operation SAVING: 3 bytes
+;; Access Floppy Disk Controller
+;; -----------------------------
+.LBB46 TSX
+       STX &C2E7        ;; Save stack pointer
+       LDA #&10
+       STA &C2E0
+       JSR LBB72
+       JSR LBDBA
+       BEQ LBB46_exit
+.LBB57 STA &C2E2
+       TSX
+       STX &C2E7
+       LDA #&C2
+       STA zp_control_block_ptr+1
+       LDA #&15
+       STA zp_control_block_ptr
+       STZ &C2E0
+       JSR LBB72
+       JSR LBD6E
+.LBB46_exit
+       JSR LBFB7
+;;
        BEQ L8110        ;; Completed ok
        PHA              ;; Save result
        JSR chunk_14
@@ -8429,25 +8451,6 @@ IF INCLUDE_FLOPPY
 ;;
 ;; Access Floppy Disk Controller
 ;; -----------------------------
-.LBB46 TSX
-       STX &C2E7        ;; Save stack pointer
-       LDA #&10
-       STA &C2E0
-       JSR LBB72
-       JSR LBDBA
-       BEQ LBB23
-.LBB57 STA &C2E2
-       TSX
-       STX &C2E7
-       LDA #&C2
-       STA zp_control_block_ptr+1
-       LDA #&15
-       STA zp_control_block_ptr
-       STZ &C2E0
-       JSR LBB72
-       JSR LBD6E
-       JMP LBFB7
-;;
 .LBB72 STZ &C2E3
        LDY #&01         ;; Point to address
        LDA (zp_control_block_ptr),Y
