@@ -63,6 +63,8 @@ abs_workspace_free_space_map = &C000
 ;; loading/storing to abs_workspace_default_retries.
 abs_workspace_default_retries = &C200
 abs_workspace_control_block = &C215
+abs_workspace_something = &C300
+abs_workspace_something_else = &C30A
 abs_workspace_current_drive = &C317 ;; &FF=no current drive
 abs_workspace_adfs_status_flag = &C320
 abs_workspace_current_directory = &C400
@@ -8136,7 +8138,10 @@ ENDIF
 ;;
 .chunk_67
        STA &B4
-       LDA #&C3
+       LDA #>abs_workspace_something
+       IF HI(abs_workspace_something) != HI(abs_workspace_something_else)
+	      ERROR "chunk_67 relies on common high byte"
+       ENDIF
        STA &B5
 .LB8BC LDA #&0A
        JSR LB8A5
@@ -8193,7 +8198,7 @@ ENDIF
 .LB92B JSR chunk_47
        LDA abs_workspace_current_drive
        JSR LB946
-       LDA #&00
+       LDA #<abs_workspace_something
        JSR chunk_67
        BMI LB925
 .LB946 ASL A
@@ -8206,7 +8211,7 @@ ENDIF
 .LB94F JSR chunk_47
        LDA &C31B
        JSR LB946
-       LDA #&0A
+       LDA #<abs_workspace_something_else
        JSR chunk_67
        BMI LB925
 .LB96A JSR LB86B
