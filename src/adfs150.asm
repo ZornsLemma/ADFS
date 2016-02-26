@@ -8439,7 +8439,15 @@ IF INCLUDE_FLOPPY
        CMP #&0B
        BNE LBB38
        BEQ LBB23
-.LBB38 JMP LBD46
+.LBB38 
+.LBD46 LDA #&01
+.trb_a2_rts
+       TRB &A2
+       RTS
+;;
+.LBD50 LDA #&02
+       BRA trb_a2_rts
+;;
 ;;
 .LBB3B LDA &A3,X
 .LBB3D STA &FE29,X      ;; Store in FDC Track/Sector
@@ -8701,14 +8709,6 @@ endif
        LDA #&6F         ;; Floppy error &2F (Abort)
        STA &A0
        JMP LBFB7
-;;
-.LBD46 LDA #&01
-.trb_a2_rts
-       TRB &A2
-       RTS
-;;
-.LBD50 LDA #&02
-       BRA trb_a2_rts
 ;;
 .LBD55 LDA #&00
        STA &A3
