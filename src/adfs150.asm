@@ -4988,11 +4988,6 @@ ENDIF
        CMP #&03
        RTS
 
-.chunk_35
-       LDA &C29A
-       STA &C2B7
-       JMP LB9CA
-
 .chunk_36
        LDA &0D5E        ;; Get drive control byte
        STA &FE24        ;; Set drive control register
@@ -8271,6 +8266,9 @@ ENDIF
        RTS
 
 ;;
+.chunk_35
+       LDA &C29A
+       STA &C2B7
 .LB9CA LDA &C2B6
        CMP &C2B7
        BEQ RTS14
