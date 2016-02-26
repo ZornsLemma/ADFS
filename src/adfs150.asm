@@ -6552,16 +6552,19 @@ ENDIF
        JSR init_retries ;; Set default retries
        STX &C1
 IF INCLUDE_FLOPPY
+{
        JSR chunk_38
        BEQ LAB50        ;; No hard drive, jump forward to do floppy
        LDA &C203,X      ;; Get drive
        BPL LAB5E        ;; Hard drive, jump ahead
 .LAB50 LDX &C1
-       JSR LBA5D	;; SAVING: 3 bytes
+       LDA #&40
+       JSR LBA63
        BEQ LAB86
        DEC zp_current_retries
        BPL LAB50
        JMP L82BD        ;; Generate disk error
+}
 ENDIF
 ;;
 ;; BPUT to hard drive
@@ -8327,8 +8330,6 @@ ENDIF
 ;;
 IF INCLUDE_FLOPPY
 ;;
-.LBA5D LDA #&40
-       BNE LBA63
 .LBA61 LDA #&C0
 .LBA63 STA &C2E0
        TXA
