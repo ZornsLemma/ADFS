@@ -8358,7 +8358,6 @@ IF INCLUDE_FLOPPY
        TSX
        STX &C2E7
        PHA
-       JSR LBBDE
        JSR LBBBE
        PLX
        BIT &A1
@@ -8491,11 +8490,29 @@ IF INCLUDE_FLOPPY
 ;;
 ;; Write to floppy
 ;; ---------------
-.LBBB5 JSR LBBDE
+.LBBB5 
        JSR LBBBE
        JMP LBF0A
 ;;
 .LBBBE 
+;;
+.LBBDE STZ &0D56
+       STZ &C2E8
+       LDX #&0B
+       LDA #&A1
+       JSR &FFF4
+       TYA
+       PHA
+       AND #&02
+       BEQ LBBF6
+       LDA #&03
+       STA &C2E8
+.LBBF6 PLA
+       AND #&01
+       BEQ LBC00
+       LDA #&02
+       STA &0D56
+.LBC00
 			;; Claim NMI space
        LDA #&8F
        LDX #&0C
@@ -8544,25 +8561,6 @@ IF INCLUDE_FLOPPY
        LDA &F4
        STA &0D00+(nmi_lda_imm_rom_bank+1-nmi_handler_start)
        RTS
-       			;; SAVING: 1 byte
-;;
-.LBBDE STZ &0D56
-       STZ &C2E8
-       LDX #&0B
-       LDA #&A1
-       JSR &FFF4
-       TYA
-       PHA
-       AND #&02
-       BEQ LBBF6
-       LDA #&03
-       STA &C2E8
-.LBBF6 PLA
-       AND #&01
-       BEQ LBC00
-       LDA #&02
-       STA &0D56
-.LBC00 RTS
 ;;
 ;;
 .LBC54 LDA &A1
