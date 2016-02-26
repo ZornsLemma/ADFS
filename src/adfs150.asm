@@ -8554,15 +8554,8 @@ IF INCLUDE_FLOPPY
        LDA &A1
        AND #&FD
        STA &A1
-       JSR LBC54
-       BMI LBC4B
-.LBC48 JSR LBC83
-.LBC4B STA &0D5F
-       LDA &F4
-       STA &0D00+(nmi_lda_imm_rom_bank+1-nmi_handler_start)
-       RTS
 ;;
-;;
+{
 .LBC54 LDA &A1
        ROL A
        LDA #&00
@@ -8580,7 +8573,16 @@ IF INCLUDE_FLOPPY
        STA &0D0A,Y
        DEY
        BPL LBC6D
-.LBC76 RTS
+.LBC76 
+}
+;;
+       BMI LBC4B
+.LBC48 JSR LBC83
+.LBC4B STA &0D5F
+       LDA &F4
+       STA &0D00+(nmi_lda_imm_rom_bank+1-nmi_handler_start)
+       RTS
+;;
 ;;
 .LBC77 LDY #&07
 .LBC79 LDA LBD16,Y
