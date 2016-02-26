@@ -8437,7 +8437,6 @@ IF INCLUDE_FLOPPY
        LDY #&05
        LDA (zp_control_block_ptr),Y
        CMP #&0B
-       BNE LBB38
        BEQ LBB23
 .LBB38 
 .LBD46 LDA #&01
