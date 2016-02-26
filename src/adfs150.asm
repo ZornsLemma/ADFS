@@ -8664,21 +8664,6 @@ if &0D00 + nmi_handler_size - 1 >= &0D56
 	error "NMI handler too large"
 endif
 ;;
-.LBCE5 LDA &A2
-       ROR A
-       BCC LBCEB
-       RTS
-;;
-.LBCEB LDA &0D5D
-       AND #&10
-       BEQ LBCE5
-       BIT &FF
-       BPL LBCE5
-       STZ &FE24        ;; Drive control
-       LDA #&6F         ;; Floppy error &2F (Abort)
-       STA &A0
-       JMP LBFB7
-;;
 .LBD00 LDA &FFFF
        STA &FE2B        ;; FDC Data register
        INC &0D0B
@@ -8701,11 +8686,21 @@ endif
 .LBD2F LDA #&80
 .LBD31 JSR LBD62
        STA &FE28        ;; FDC Status/Command
-       BRA LBCE5
 ;;
-       LDA #&10
-       TRB &0D5E        ;; Set side 0
+.LBCE5 LDA &A2
+       ROR A
+       BCC LBCEB
        RTS
+;;
+.LBCEB LDA &0D5D
+       AND #&10
+       BEQ LBCE5
+       BIT &FF
+       BPL LBCE5
+       STZ &FE24        ;; Drive control
+       LDA #&6F         ;; Floppy error &2F (Abort)
+       STA &A0
+       JMP LBFB7
 ;;
 .LBD40 LDA #&10
        TSB &0D5E        ;; Set side 1
