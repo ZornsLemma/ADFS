@@ -5969,7 +5969,37 @@ ENDIF
        STA (&B6),Y
        DEY
        BPL LA5FC
-       JMP chunk_66
+;;
+.chunk_66
+{
+       JSR L8F91
+.LA6BB 
+       JSR ldy_3_lda_b6_y
+       BPL chunk_66_exit
+;;
+       LDY #&02
+       JSR chunk_62
+       LDY #&09
+       JSR chunk_40_sta_c274_y_dey_bpl
+       LDA #&74
+       STA &B4
+       LDA #&C2
+       STA &B5
+       JSR L9486
+       LDY #&09
+.loop1 LDA &C274,Y
+       STA &C8CC,Y
+       DEY
+       BPL loop1
+       LDY #&02
+.loop2 LDA &C270,Y
+       STA &C8D6,Y
+       DEY
+       BPL loop2
+       JSR L8F91
+.chunk_66_exit
+       JMP L89D8
+}
 ;;
 .LA622 JMP L95AB
 ;;
@@ -6035,37 +6065,6 @@ ENDIF
        BPL LA6AF
        JSR L921B
        JMP L89D8
-;;
-.chunk_66
-{
-       JSR L8F91
-.LA6BB 
-       JSR ldy_3_lda_b6_y
-       BPL chunk_66_exit
-;;
-       LDY #&02
-       JSR chunk_62
-       LDY #&09
-       JSR chunk_40_sta_c274_y_dey_bpl
-       LDA #&74
-       STA &B4
-       LDA #&C2
-       STA &B5
-       JSR L9486
-       LDY #&09
-.loop1 LDA &C274,Y
-       STA &C8CC,Y
-       DEY
-       BPL loop1
-       LDY #&02
-.loop2 LDA &C270,Y
-       STA &C8D6,Y
-       DEY
-       BPL loop2
-       JSR L8F91
-.chunk_66_exit
-       JMP L89D8
-}
 ;;
 ;; Check loaded directory
 ;; ----------------------
