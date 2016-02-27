@@ -8860,7 +8860,9 @@ endif
        LDA &A6
        JMP LBD62
 ;;
-.LBE91 LDA &0D58
+.LBE91 
+{
+       LDA &0D58
        BNE LBEF8
        LDA &0D57
        BNE LBEAA
@@ -8870,6 +8872,7 @@ endif
        BEQ LBF09
 .LBEA4 DEC &0D59
        BRA LBEFB
+}
 ;;
 .LBEAA LDA &0D5A
        BNE LBEF2
