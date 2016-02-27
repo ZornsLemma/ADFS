@@ -31,6 +31,7 @@ default_retries = &10
 
 zp_control_block_ptr = &B0 ;; 2 bytes
 zp_current_retries = &CE
+zp_text_pointer = &F2
 
 zp_escape_flag = &FF ;; bit 7
 
@@ -4403,7 +4404,7 @@ ENDIF
 ;; =========================================
 .L9CEA LDX #&0A
 .L9CEC LDA L9CFA,X      ;; Copy information
-       STA (&F2),Y
+       STA (zp_text_pointer),Y
        INY
        DEX
        BPL L9CEC
@@ -4443,7 +4444,7 @@ ENDIF
 .L9D23 PHY              ;; Save command pointer
        LDA #&FF         ;; Flag not '*fadfs'
        PHA
-       LDA (&F2),Y      ;; Get first character
+       LDA (zp_text_pointer),Y      ;; Get first character
        ORA #&20         ;; Force to lower case
        CMP #&66         ;; Is it 'f' of 'fadfs'?
        BNE L9D34        ;; No, jump past
@@ -4452,7 +4453,7 @@ ENDIF
        PHA
        INY              ;; Point to next character
 .L9D34 LDX #&03         ;; 'adfs' is 3+1 characters
-.L9D36 LDA (&F2),Y      ;; Get character
+.L9D36 LDA (zp_text_pointer),Y      ;; Get character
        INY              ;; Move to next
        CMP #&2E         ;; Is it '.'?
        BEQ L9D47        ;; Jump to match abbreviated command
@@ -4461,7 +4462,7 @@ ENDIF
        BNE L9D57        ;; No match, abandon scanning
        DEX              ;; Decrease length/pointer
        BPL L9D36        ;; Loop for all four characters
-.L9D47 LDA (&F2),Y      ;; Get next character
+.L9D47 LDA (zp_text_pointer),Y      ;; Get next character
        INY              ;; Move to next character
        CMP #&20         ;; Check if it was a space
        BEQ L9D47        ;; Loop to skip spaces
@@ -4606,26 +4607,32 @@ ENDIF
        RTS
 .L9E0D TYA
        PHA
-       LDA (&F2),Y
+       LDA (zp_text_pointer),Y
        CMP #&20
        BCS L9E3E
        JSR L9DF6
        JSR L92A8
        EQUS "  ADFS", &8D
+.service_help_exit
+{
 .L9E22 PLA
        TAY
        LDX &F4
        LDA #&09
+}
+.service_help_exit_rts
+{
 .L9E28 RTS
+}
 ;;
 .L9E29 
        INY
-       LDA (&F2),Y
+       LDA (zp_text_pointer),Y
        CMP #&20
-       BCS L9E28
+       BCS service_help_exit_rts
        PLA
        PLA
-       BCC L9E22
+       BCC service_help_exit
 .L9E34 JSR L9E29
        BNE L9E34
 {
@@ -4634,7 +4641,7 @@ ENDIF
 }
 .L9E3E LDX #&03
 {
-.L9E40 LDA (&F2),Y
+.L9E40 LDA (zp_text_pointer),Y
        CMP #&2E
        BEQ L9E57
        ORA #&20
@@ -4643,13 +4650,14 @@ ENDIF
        INY
        DEX
        BPL L9E40
-       LDA (&F2),Y
+       LDA (zp_text_pointer),Y
        CMP #&21
        BCS L9E34
 .L9E57 JSR L9DF6
        LDX #&00
+.loop
 .L9E5C LDA command_table,X
-       BMI L9E22
+       BMI service_help_exit
        JSR L92A8
        EQUB &20, &A0
        LDY #&09
@@ -4675,7 +4683,7 @@ ENDIF
        INX
        INX
        INX
-       BRA L9E5C
+       BRA loop
 }
 ;;
 .L9E95 EQUB <L9FFB
