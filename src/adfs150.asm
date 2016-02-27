@@ -4935,6 +4935,8 @@ ENDIF
        RTS
 ;;
 
+.chunk_13_a0
+       LDA #&00
 .chunk_13
        ORA &0D5C
        STA &FE28        ;; FDC Status/Command
@@ -8777,9 +8779,9 @@ endif
        STA &A0
        JMP LBFB7
 ;;
-.LBD55 LDA #&00
-       STA &A3
-       JSR chunk_13
+.LBD55 
+       STZ &A3
+       JSR chunk_13_a0
        BRA LBCE5
 ;;
 .LBD62
@@ -8906,8 +8908,7 @@ endif
        TRB &A2
        INC &A3
        JSR LBD40
-       LDA #&00
-       JSR chunk_13
+       JSR chunk_13_a0
        BPL LBE41
 }
 ;;
