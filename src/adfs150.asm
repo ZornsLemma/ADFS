@@ -5856,7 +5856,16 @@ ENDIF
 .LA528 TYA
        PLP
        CLC
-       JMP chunk_55
+.chunk_55
+{
+       ADC &B4
+       STA &B4
+       BCC chunk_55_rts
+       INC &B5
+.chunk_55_rts
+       RTS
+}
+
 ;;
 .LA534 
        jsr ldy_0_lda_b4_y
@@ -6534,20 +6543,14 @@ ELSE
        JMP L831E
 ENDIF
 
-.chunk_55
-       ADC &B4
-       STA &B4
-       BCC chunk_55_rts
-       INC &B5
-.chunk_55_rts
+.rts300
        RTS
-
 ;;
 .LAB03 JSR LACE6        ;; Check checksum
 .LAB06 JSR LABB4        ;; Check for data lost
        LDA &C204,X
        CMP #&C0
-       BCC chunk_55_rts
+       BCC rts300
        TXA
        LSR A
        LSR A
