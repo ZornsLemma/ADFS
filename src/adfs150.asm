@@ -1522,6 +1522,7 @@ ENDIF
        DEY
        BPL L8758
 ;;
+.error_bad_name
 .L8760 JSR L836B
        EQUB &CC         ;; ERR=204
        EQUS "Bad name"
@@ -2115,26 +2116,31 @@ ENDIF
 .L8BD0 LDA #&00
 .L8BD2 RTS
 ;;
+;;
 ;; FSC 10 - *INFO
 ;; ==============
 .L94EE JSR L8FE8        ;; Search for object
        BEQ fsc_10_info_file_found
-       BRA L8BD3        ;; Error 'File not found' or 'Bad name'
-;;
+       BRA error_file_not_found_or_bad_name ;; Error 'File not found' or 'Bad name'
 .fsc_10_info_file_found
 .L94F6 JSR L9508        ;; Call ...
        JSR L8964
        BEQ L94F6
        JMP L89D8
 ;;
+
+.error_file_not_found_or_bad_name
+{
 .L8BD3 
        jsr ldy_0_lda_b4_y
        CMP #&5E
        BNE L8BDE
-.L8BDB JMP L8760
+.jmp_error_bad_name
+.L8BDB JMP error_bad_name
 ;;
 .L8BDE CMP #&40
-       BEQ L8BDB
+       BEQ jmp_error_bad_name
+}
 .L8BE2 JSR L836B
        EQUB &D6         ;; ERR=210
        EQUS "Not found"
@@ -2153,7 +2159,7 @@ ENDIF
 ;; OSFILE &FF - LOAD
 ;; =================
 .L8C10 JSR L8BBE
-       BNE L8BD3
+       BNE error_file_not_found_or_bad_name
        JSR ldy_0_lda_b6_y
        BPL L8BFB
 .L8C1B LDY #&06
@@ -2307,7 +2313,7 @@ ENDIF
 .L8CFB LDA (&B4),Y
        CMP #&2E
        BNE L8D04
-.L8D01 JMP L8BD3
+.L8D01 JMP error_file_not_found_or_bad_name
 ;;
 .L8D04 CMP #&21
        BCC L8D0F
@@ -3778,7 +3784,7 @@ ENDIF
 ;; =======
 .L9942 JSR L8FE8        ;; Search for object
        BEQ L9956        ;; Jump forward if found
-       JMP L8BD3        ;; Jump to 'Not found'/'Bad name'
+       JMP error_file_not_found_or_bad_name ;; Jump to 'Not found'/'Bad name'
 ;;
 .L994A LDY #&02         ;; Clear existing LWR bits
 .L994C JSR chunk_40
@@ -5868,7 +5874,7 @@ ENDIF
        JSR L8DC8
        JSR L8BF0
        BEQ LA555
-       JMP L8BD3
+       JMP error_file_not_found_or_bad_name
 ;;
 .LA555 
        JSR ldy_3_lda_b6_y
@@ -6217,7 +6223,7 @@ ENDIF
        STA &C280
        JSR L8BBE
        BEQ LA863
-       JMP L8BD3
+       JMP error_file_not_found_or_bad_name
 ;;
 .LA863 JSR chunk_18
        LDA &B4
