@@ -2116,19 +2116,17 @@ ENDIF
 .L8BD0 LDA #&00
 .L8BD2 RTS
 ;;
-;;
-;; FSC 10 - *INFO
-;; ==============
-.L94EE JSR L8FE8        ;; Search for object
-       BEQ fsc_10_info_file_found
-       BRA error_file_not_found_or_bad_name ;; Error 'File not found' or 'Bad name'
 .fsc_10_info_file_found
 .L94F6 JSR L9508        ;; Call ...
        JSR L8964
        BEQ L94F6
        JMP L89D8
 ;;
-
+;;
+;; FSC 10 - *INFO
+;; ==============
+.L94EE JSR L8FE8        ;; Search for object
+       BEQ fsc_10_info_file_found
 .error_file_not_found_or_bad_name
 {
 .L8BD3 
