@@ -4873,13 +4873,6 @@ ENDIF
        CMP abs_workspace_current_drive
        RTS
 
-.chunk_9
-       LDA &B4
-       STA &C240
-       LDA &B5
-       STA &C241
-       JMP lda_40_sta_b8_lda_c2_sta_b9
-
 .chunk_10
        LDA #&FF
        STA &C22E
@@ -5184,6 +5177,11 @@ ENDIF
        BPL lda_c314_y_sta_c22c_y_dey_bpl
        RTS
 
+.chunk_9
+       LDA &B4
+       STA &C240
+       LDA &B5
+       STA &C241
 .lda_40_sta_b8_lda_c2_sta_b9
        LDA #&40
 .sta_b8_lda_c2_sta_b9
