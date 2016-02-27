@@ -14,6 +14,8 @@ CPU 1
 control_block_full_size = 16
 control_block_size_excl_length = 10 ;; TODO: poor name, it's not the size, it's the highest byte to copy
 
+top_bit = &80
+
 ;; Offsets within a control block
 cb_result = 0
 cb_addr = 1 ;; 4 bytes
@@ -2992,6 +2994,9 @@ ENDIF
 ;;
 .chunk_64
        JSR L928F
+;; JSR print_inline_to_top_bit_set:EQUS "fo":EQUB 'o'+top_bit:.continue_here
+.print_inline_to_top_bit_set
+{
 .L92A8 PLA
        STA &B6
        PLA
@@ -3013,6 +3018,7 @@ ENDIF
        PHA
        PHY
        RTS
+}
 ;;
 .L92CB PHA
        TXA
@@ -3085,8 +3091,8 @@ ENDIF
        EQUB &20, &A8
        LDA &C8FA
        JSR L9322
-       JSR L92A8
-       EQUS ")",&0D,"Drive",&BA
+       JSR print_inline_to_top_bit_set
+       EQUS ")",&0D,"Drive",':'+top_bit
        LDA abs_workspace_current_drive
        ASL A
        ROL A
@@ -3103,7 +3109,7 @@ ENDIF
        EQUS "Option", &A0
        LDA &C1FD
        JSR L9322
-       JSR L92A8
+       JSR print_inline_to_top_bit_set
        EQUB &20, &A8
        LDX &C1FD
        LDA L9426,X
@@ -3854,7 +3860,7 @@ ENDIF
        STA &B5
        PLA
        STA &B4
-       JSR L92A8
+       JSR print_inline_to_top_bit_set
        EQUS "Destroy ?", &A0
        LDX #&03
 .L9A0F JSR &FFE0
@@ -4202,7 +4208,7 @@ ENDIF
        PLA              ;; With Hard BREAK and power on
        LDA #&43         ;; ...change key pressed to 'fadfs'
        PHA
-.L9B85 JSR L92A8        ;; Print FS banner
+.L9B85 JSR print_inline_to_top_bit_set        ;; Print FS banner
        EQUS "Acorn ADFS", &0D, &8D
 ;;
 ;; Select ADFS
@@ -4596,7 +4602,7 @@ ENDIF
        BPL L9DEC
        BRA L9DB4
 ;;
-.L9DF6 JSR L92A8
+.L9DF6 JSR print_inline_to_top_bit_set
 IF PATCH_SD
        EQUS &0D, "Advanced DFS 1.57", &8D
 ELIF PATCH_IDE
@@ -4611,7 +4617,7 @@ ENDIF
        CMP #&20
        BCS L9E3E
        JSR L9DF6
-       JSR L92A8
+       JSR print_inline_to_top_bit_set
        EQUS "  ADFS", &8D
 .service_help_exit
 {
@@ -4658,7 +4664,7 @@ ENDIF
 .loop
 .L9E5C LDA command_table,X
        BMI service_help_exit
-       JSR L92A8
+       JSR print_inline_to_top_bit_set
        EQUB &20, &A0
        LDY #&09
 .L9E68 LDA command_table,X
@@ -5311,7 +5317,7 @@ ENDIF
 ;;
 .LA063 JSR LA1EA
        JSR LA206
-       JSR L92A8
+       JSR print_inline_to_top_bit_set
        EQUS "Free", &8D
        JSR LA1EA
        LDY #&01
@@ -5324,10 +5330,10 @@ ENDIF
        DEX
        BPL LA079
        JSR LA206
-       JSR L92A8
+       JSR print_inline_to_top_bit_set
        EQUS "Used", &8D
 .LA091 RTS
-.LA092 JSR L92A8
+.LA092 JSR print_inline_to_top_bit_set
        EQUS "Address :  Length", &8D
        LDX #&00
 .LA0A9 CPX &C1FE
@@ -5341,7 +5347,7 @@ ENDIF
        JSR L9322
        DEY
        BPL LA0B5
-       JSR L92A8
+       JSR print_inline_to_top_bit_set
        EQUS "  : ", &A0
        LDX &C6
        LDY #&02
@@ -5361,7 +5367,7 @@ ENDIF
        LDX &C1FE        ;; Get FSM size
        CPX #&E1
        BCC LA091        ;; If FSM not filling up, exit
-       JSR L92A8        ;; Print message
+       JSR print_inline_to_top_bit_set        ;; Print message
        EQUB "Compaction recommended", &8D
 .RTS12
        RTS
@@ -5512,7 +5518,7 @@ ENDIF
        JSR L9322
        LDA &C216
        JSR L9322
-       JSR L92A8
+       JSR print_inline_to_top_bit_set
        EQUS " Sectors =", &A0
        LDX #&1F
        STX &C233
@@ -5559,7 +5565,7 @@ ENDIF
        JSR LA03C
 .LA284 DEX
        BPL LA25F
-       JSR L92A8
+       JSR print_inline_to_top_bit_set
        EQUS " Bytes",&A0
        RTS
 .LA292 JSR LB546
