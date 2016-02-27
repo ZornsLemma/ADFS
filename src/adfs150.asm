@@ -2409,8 +2409,7 @@ ENDIF
 .L8E01 BNE check_dir_full_error
 ;; fall through to chunk_30
 .chunk_30
-       LDX #&02
-       JSR chunk_29
+       JSR chunk_29b
 .chunk_30_loop1
        INY
        LDA #&00
@@ -3675,8 +3674,7 @@ ENDIF
 .L9871 JSR chunk_15
        BNE L9860
        PLP
-       LDX #&02
-       JSR chunk_29
+       JSR chunk_29b
 .L9880 INY
        LDA (&B6),Y
        ADC #&00
@@ -4976,6 +4974,8 @@ ENDIF
        ROL &C22B        ;; Copy LWR into &C22B
        RTS
 
+.chunk_29b
+       LDX #&02
 .chunk_29
        LDY #&12
        LDA (&B6),Y
