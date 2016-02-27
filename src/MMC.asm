@@ -87,10 +87,12 @@ write_block      =&58
      JSR MMC_DoCommand
      AND #&81                        ; ignore errors
      CMP #1
-     BEQ il0
-     JMP ifail
+     BNE ifail
+
+{
 .il0
-     LDA #&01
+}
+     ;; LDA #&01 - A is already 1
      STA cardsort%
      LDA #&48
      JSR MMC_SetCommand
@@ -113,7 +115,17 @@ write_block      =&58
      JSR MMC_DoCommand
      CMP #2
      BCC il11
-     JMP ifail
+
+.ifail
+     ;; Try again?
+     DEC attempts%
+     BEQ ifaildone
+     JMP iloop
+
+.ifaildone
+     ;; Give up!
+     SEC
+     RTS
 .il11
      BIT EscapeFlag                  ; may hang
      BMI ifail
@@ -168,17 +180,6 @@ write_block      =&58
      LDA #&40
      STA mmcstate%
      CLC
-     RTS
-
-.ifail
-     ;; Try again?
-     DEC attempts%
-     BEQ ifaildone
-     JMP iloop
-
-.ifaildone
-     ;; Give up!
-     SEC
      RTS
 
      ;; Failed to set block length
