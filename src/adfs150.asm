@@ -4859,14 +4859,6 @@ ENDIF
        STA &B5
        RTS
 
-.chunk_6
-       STA &C298
-       LDA #&02
-       CMP &C2B4
-       LDA #&80
-       ROR A
-       JMP LABE7
-
 .chunk_7
        LDA &C2BA
        LDX &C2BB
@@ -6716,6 +6708,12 @@ ENDIF
 .LABE6 RTS
 ;;
 ;;
+.chunk_6
+       STA &C298
+       LDA #&02
+       CMP &C2B4
+       LDA #&80
+       ROR A
 .LABE7 LDX #&10
        STX &C295
        TAY
