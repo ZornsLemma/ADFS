@@ -3888,7 +3888,6 @@ ENDIF
        PLA
        JMP L89D8
 ;;
-.L9A4C JMP (&021E)
 ;;
 ;;
 ;; Default context
@@ -5693,7 +5692,7 @@ ENDIF
        LDA #&0B         ;; Otherwise, pass on to libfs
        LDX &C0
        LDY &C1
-       JMP L9A4C        ;; Pass on to FSC to call libfs
+.L9A4C JMP (&021E)      ;; Pass on to FSC to call libfs
 ;;
 .LA3CB JSR L836B        ;; Generate error
        EQUB &FE         ;; ERR=254
