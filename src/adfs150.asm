@@ -2118,9 +2118,10 @@ ENDIF
 ;; FSC 10 - *INFO
 ;; ==============
 .L94EE JSR L8FE8        ;; Search for object
-       BEQ L94F6
+       BEQ fsc_10_info_file_found
        BRA L8BD3        ;; Error 'File not found' or 'Bad name'
 ;;
+.fsc_10_info_file_found
 .L94F6 JSR L9508        ;; Call ...
        JSR L8964
        BEQ L94F6
