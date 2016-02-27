@@ -70,7 +70,11 @@ abs_workspace_default_retries = &C200
 abs_workspace_control_block = &C215
 abs_workspace_something = &C300
 abs_workspace_something_else = &C30A
-abs_workspace_current_drive = &C317 ;; &FF=no current drive
+
+;; init_context_ffffffff implies the 'context' lives at &C22C-&C237 inclusive
+;; and &C314-&C31F inclusive. So these are part of the context:
+       abs_workspace_current_drive = &C317 ;; &FF=no current drive
+
 abs_workspace_adfs_status_flag = &C320
 abs_workspace_current_directory = &C400
 abs_workspace_park = &C900
@@ -909,7 +913,7 @@ ENDIF
        CMP #&6F         ;; Floppy error &2F (Abort)?
        BNE check_drive_ready ;; If no, report a disk error
 ;;
-.L82C9 JSR L849A
+.L82C9 JSR init_context_ffffffff
 .acknowledge_escape
 {
 .L82CC LDA #&7E
@@ -1153,7 +1157,7 @@ ENDIF
        PLA
        LDX #<L84C0
        JSR L84CB
-       JSR L849A
+       JSR init_context_ffffffff
 .L843D JMP &0100
 
 ;;
@@ -1202,7 +1206,10 @@ ENDIF
 .L8498 PLA
        RTS
 ;;
-.L849A LDX #&0C
+.init_context_ffffffff
+{
+.L849A 
+       LDX #&0C
        LDA #&FF
 .L849E STA &C22B,X
        STA &C313,X
@@ -1218,6 +1225,7 @@ ENDIF
        STA abs_workspace_current_directory,Y
        INY
        BNE L84B0
+}
 .RTS3
 .L84BC RTS
 ;;
@@ -4303,7 +4311,7 @@ ENDIF
 .L9C10 PLA              ;; Get selection flag from stack
        CMP #&43         ;; '*fadfs'/F-Break type of selection?
        BNE L9C18        ;; No, jump to keep context
-       JSR L849A        ;; Set context to &FFFFFFFF when *fadfs
+       JSR init_context_ffffffff ;; Set context to &FFFFFFFF when *fadfs
 .L9C18 LDY #&03         ;; Copy current context to backup context
        JSR lda_c314_y_sta_c22c_y_dey_bpl
        JSR L89D8        ;; Get FSM and root from :0 if context<>-1
