@@ -1,4 +1,3 @@
-;; TODO See dp11 post Sat Feb 27, 2016 5:25 pm
 ORG &8000
 CPU 1
 
@@ -6783,8 +6782,7 @@ ENDIF
        AND #&E0
        ORA &CF
        PHP
-       CLC
-       ROL A
+       ASL A
        STA &C204,X
        PLP
        BCC LAC4A
@@ -6811,8 +6809,7 @@ ENDIF
        LSR A
        BEQ LAC6E
        BCC LAC6E
-       CLC
-       ROL A
+       ASL A
        STA &C204,X
        JSR LAD04
        JSR chunk_19
@@ -8759,8 +8756,7 @@ endif
        ROR &C2E4
        BCC LBD6A
        ORA #&04
-       CLC
-.LBD6A ROL &C2E4
+.LBD6A ASL &C2E4
        STA &FE28        ;; FDC Status/Command
        RTS
 }
@@ -9054,9 +9050,8 @@ endif
        LDA &A3
        BCC LBFD6        ;; Jump if drive 1/5
        STA &C2E5        ;; Store
-       ROL &C2E4
-       CLC
-       ROR &C2E4        ;; Clear b7
+       ASL &C2E4
+       LSR &C2E4        ;; Clear b7
        BCS LBFE1
 ;;
 .LBFD6 STA &C2E6
