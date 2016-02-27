@@ -812,8 +812,7 @@ ELSE
 .L821F LDX #&27
        LDY #&C2
 .L8223 JSR L8332
-       BPL L822B
-       BRA L81AD
+       BMI L81AD
 ;;
 .L822B BVS L8245
        PHP
