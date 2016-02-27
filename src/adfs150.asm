@@ -74,6 +74,7 @@ abs_workspace_something_else = &C30A
 ;; init_context_ffffffff implies the 'context' lives at &C22C-&C237 inclusive
 ;; and &C314-&C31F inclusive. So these are part of the context:
        abs_workspace_current_drive = &C317 ;; &FF=no current drive
+;; I think &C22C-&C237 is the 'current context' and &C314-&C31F is the 'backup context'
 
 abs_workspace_adfs_status_flag = &C320
 abs_workspace_current_directory = &C400
@@ -946,7 +947,7 @@ ENDIF
        BEQ floppy_protected ;; Jump to report "Disk protected"
                         ;; All other results, give generic
                         ;; error message
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        TAX
        JSR generate_error_inline4
        EQUB &C7         ;; ERR=199
@@ -1046,7 +1047,7 @@ ENDIF
 }
 .generate_error_inline
 {
-.L836B JSR L89D8
+.L836B JSR get_fsm_and_root_from_0_if_context_not_minus_1
        LDA #as_fsm_inconsistent
        TRB zp_adfs_status_flag
 }
@@ -1854,18 +1855,21 @@ ENDIF
 ;;
 .LA4BD JSR chunk_32_a
        JSR L93DB
-       BRA L89D8
+       BRA get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 .LA4C9 JSR chunk_32_a
        JSR L943D
-       BRA L89D8
+       BRA get_fsm_and_root_from_0_if_context_not_minus_1
 
 .chunk_63
        JSR L8F91
 ;;
 .L89D5 LDA &C2C0
 ;;
-.L89D8 PHA
+.get_fsm_and_root_from_0_if_context_not_minus_1
+{
+.L89D8 
+       PHA
        LDA &C22F
        CMP #&FF
        BEQ L89EF
@@ -1877,6 +1881,7 @@ ENDIF
        CMP #&FF
        BEQ L8A22
        TAX
+}
 
 ;; Copy parameter block to load '$'
 {
@@ -2151,7 +2156,7 @@ ENDIF
 .L94F6 JSR L9508        ;; Call ...
        JSR L8964
        BEQ L94F6
-       JMP L89D8
+       JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 ;;
 ;; FSC 10 - *INFO
@@ -2310,7 +2315,7 @@ ENDIF
 IF PATCH_FULL_ACCESS
        STA &C2C0
 ELSE
-       JMP L89D8        ;;                         STA &C2C0
+       JMP get_fsm_and_root_from_0_if_context_not_minus_1        ;;                         STA &C2C0
 ENDIF
 ;;
 .L8CCE JSR L8C70
@@ -2856,7 +2861,7 @@ ENDIF
 .L9127 JSR L8CD4
        BEQ L9131
        LDA #&00
-       JMP L89D8
+       JMP get_fsm_and_root_from_0_if_context_not_minus_1
 
 ;;
 .L9131 JSR L8D1B
@@ -2871,7 +2876,7 @@ ENDIF
        JSR L9486
        LDA &C405
        PHP
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        JSR LA4B1
        PLP
        BEQ L9177
@@ -3204,7 +3209,7 @@ ENDIF
        LDA #&0B
        JSR print_a
 .L9420 JSR print_cr
-.L9423 JMP L89D8
+.L9423 JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 .L9426 EQUB <L942A, <L942E, <L9432, <L9436
 .L942A EQUS "Off "
@@ -3364,7 +3369,7 @@ ENDIF
        DEY
        BPL L9563
        JSR chunk_10
-       JMP L89D8
+       JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 .L9577 LDA #&FF
        LDY #&00
@@ -3793,7 +3798,7 @@ ENDIF
        INC &B7
        BRA L98E2
 ;;
-.L993D JMP L89D8
+.L993D JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 .L9940 EQUS "^"
 .L9941 EQUB 13
@@ -3864,7 +3869,7 @@ ENDIF
        JSR L8964
        BEQ L9956
        JSR L8F91
-       JMP L89D8
+       JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 .L99CE PHY
        TXA
@@ -3922,7 +3927,7 @@ ENDIF
 ;;
 .L9A47 PLA
        PLA
-       JMP L89D8
+       JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 ;;
 ;;
@@ -4314,7 +4319,7 @@ ENDIF
        JSR init_context_ffffffff ;; Set context to &FFFFFFFF when *fadfs
 .L9C18 LDY #&03         ;; Copy current context to backup context
        JSR lda_c314_y_sta_c22c_y_dey_bpl
-       JSR L89D8        ;; Get FSM and root from :0 if context<>-1
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1        ;; Get FSM and root from :0 if context<>-1
        JSR chunk_52
        BEQ L9C7D        ;; No drive (eg *fadfs), jump ahead
        JSR LB4CD
@@ -4362,7 +4367,7 @@ ENDIF
        STA &C30A,Y
        DEY
        BPL L9C70
-.L9C7A JSR L89D8
+.L9C7A JSR get_fsm_and_root_from_0_if_context_not_minus_1
 .L9C7D LDA #&EA
        JSR L84C4
        LDA #as_tube_present
@@ -5310,7 +5315,7 @@ ENDIF
        BNE LA013
 .LA00F LDA #as_fsm_opt1
        TRB zp_adfs_status_flag
-.LA013 JMP L89D8
+.LA013 JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 .LA016 CPX #&03
        BNE LA02A
@@ -5747,7 +5752,7 @@ ENDIF
        RTS
 ;;
 .LA3B5 JSR LA4B1
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        LDA &C2D6        ;; Get FSC function
        CMP #&0B         ;; Was this Run from libfs?
        BEQ LA3CB        ;; Yes, jump to error
@@ -5769,7 +5774,7 @@ ENDIF
        STA &C1
        JSR L8BBE
        BEQ LA3FE
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        LDA &C0
        STA &B4
        LDA &C1
@@ -5823,7 +5828,7 @@ ENDIF
        JSR chunk_26
        ;; We don't need this LDY #&00 now we have ORA (&B6) not ORA (&B6),Y.
        ;; LA45C does JSR L8C1B which immediately does LDY. L8BFB does JSR generate_error_inline
-       ;; which does JSR L89D8. L89D8 will either LDY inside
+       ;; which does JSR get_fsm_and_root_from_0_if_context_not_minus_1. get_fsm_and_root_from_0_if_context_not_minus_1 will either LDY inside
        ;; scsi_op_load_fsm, or it will hit L89EF from where it will LDY
        ;; #&0A or hit L8A22 which will LDY.
        ;; LDY #&00
@@ -5860,7 +5865,7 @@ ENDIF
        STA &C318,Y
        DEY
        BPL LA492
-.LA49B JMP L89D8
+.LA49B JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 .LA49E LDY #&03
 .LA4A0 LDA &C314,Y
@@ -5877,7 +5882,7 @@ ENDIF
        STA &C31C,Y
        DEY
        BPL LA4D7
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        LDY #&09
 .LA4EB LDA &C8CC,Y
        STA &C300,Y
@@ -5947,7 +5952,7 @@ ENDIF
 ;;
 .LA555 
        JSR ldy_3_lda_b6_y
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        BPL LA580
        PLX
        PLA
@@ -5984,7 +5989,7 @@ ENDIF
 .LA5A5 LDA &C22E
        BPL LA5B5
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
-.LA5B5 JSR L89D8
+.LA5B5 JSR get_fsm_and_root_from_0_if_context_not_minus_1
        PLX
        PLA
        STA &B4
@@ -6059,7 +6064,7 @@ ENDIF
        BPL loop2
        JSR L8F91
 .chunk_66_exit
-       JMP L89D8
+       JMP get_fsm_and_root_from_0_if_context_not_minus_1
 }
 ;;
 .LA622 JMP L95AB
@@ -6101,7 +6106,7 @@ ENDIF
        DEY
        DEX
        BPL LA66D
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        JSR lda_40_sta_b8_lda_c2_sta_b9
        JSR chunk_31
        LDY #&03
@@ -6125,7 +6130,7 @@ ENDIF
        DEX
        BPL LA6AF
        JSR L921B
-       JMP L89D8
+       JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 ;; Check loaded directory
 ;; ----------------------
@@ -6303,7 +6308,7 @@ ENDIF
        STA &C26C,Y
        DEY
        BPL LA879
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        LDY #&03
        JSR lda_c314_y_sta_c22c_y_dey_bpl
        JSR LA394
@@ -6326,7 +6331,7 @@ ENDIF
 ;;
 .LA8BF JSR L8964
        BEQ LA8AF
-       JMP L89D8
+       JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
 .LA8C7 JSR chunk_18
        JSR L8C6D
@@ -6393,7 +6398,7 @@ ENDIF
 ;; ==========================
 .LA96D JSR chunk_52
        BEQ LA983
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        LDA #&FF         ;; Continue into OSARGS &FF,0
        LDY #&00         ;;  to ensure all files
 ;;
@@ -7066,7 +7071,7 @@ ENDIF
        STA &C22D
        LDA &C3D4,X
        STA &C22E
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        LDY #&02
 .LAE06 JSR chunk_32
        LDA &C233
@@ -7363,7 +7368,7 @@ ENDIF
        STA &C33E,X
        LDA &C29D
        STA &C334,X
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
 .LB0DA LDA &C2BF
        STA &C22F
        LDX #&02
@@ -7610,7 +7615,7 @@ ENDIF
        PHA
        JSR LB19C
        PLA
-.LB336 JSR L89D8
+.LB336 JSR get_fsm_and_root_from_0_if_context_not_minus_1
        LDX &C5
        LDY &C4
        RTS
@@ -7670,7 +7675,7 @@ ENDIF
        STX &B8
        LDY #&C2
        STY &B9
-       JSR L89D8
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1
        JSR L8F57
        JSR chunk_63
        LDA &C240
@@ -7733,7 +7738,7 @@ ENDIF
        CMP &C384,X
        BNE LB442        ;; Jump ahead with difference
 .LB435 JSR LAAB9        ;; Write buffer?
-       JSR L89D8        ;; Do something with FSM
+       JSR get_fsm_and_root_from_0_if_context_not_minus_1        ;; Do something with FSM
        LDA #&00
        LDY &C4
        LDX &C5
@@ -8071,7 +8076,7 @@ ENDIF
        DEX
        BPL LB745
        JSR chunk_35
-.LB758 JSR L89D8
+.LB758 JSR get_fsm_and_root_from_0_if_context_not_minus_1
        JSR LB19C
 .LB75E LDA #&00
        CMP &C2B5
