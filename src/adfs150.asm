@@ -8692,7 +8692,6 @@ endif
        BNE LBD31
 .LBD2F LDA #&80
 .LBD31 JSR LBD62
-       STA &FE28        ;; FDC Status/Command
 ;;
 .LBCE5 LDA &A2
        ROR A
@@ -8714,12 +8713,16 @@ endif
        JSR chunk_13
        BRA LBCE5
 ;;
-.LBD62 ROR &C2E4
+.LBD62
+{
+       ROR &C2E4
        BCC LBD6A
        ORA #&04
        CLC
 .LBD6A ROL &C2E4
+       STA &FE28        ;; FDC Status/Command
        RTS
+}
 ;;
 .LBD6E LDA &C2E2
        STA &0D0F
@@ -8829,7 +8832,7 @@ endif
        BNE LBE41
 .LBE5C LDA &A2
        AND #&08
-       BEQ LBE90
+       BEQ LBE77_rts
        JSR LBD46
        LDA #&08
        TRB &A2
@@ -8847,13 +8850,12 @@ endif
        BNE LBE85
        LDA #&01
        TSB &A2
+.LBE77_rts
        RTS
 ;;
 .LBE85 JSR LBD50
        LDA &A6
-       JSR LBD62
-       STA &FE28        ;; FDC Status/Command
-.LBE90 RTS
+       JMP LBD62
 ;;
 .LBE91 LDA &0D58
        BNE LBEF8
