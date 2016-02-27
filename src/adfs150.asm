@@ -1324,7 +1324,24 @@ ENDIF
 .L85CB JSR chunk_15
        BNE L85BB
        PLP
-       JMP chunk_25
+.chunk_25
+{
+       LDY #&00
+       LDX &B2
+       CLC
+       PHP
+.chunk_25_loop
+       PLP
+       LDA &C0FD,X
+       ADC &C237,Y
+       STA &C0FD,X
+       PHP
+       JSR chunk_15
+       BNE chunk_25_loop
+       PLP
+       RTS
+}
+
 ;;
 .L85B3 LDX &B2
        BEQ L85EB
@@ -4955,22 +4972,6 @@ ENDIF
 .chunk_24
        LDA &BFFD,X      ;; Get FSM entry start sector
        ADC &C0FD,X      ;; Add FSM entry length
-       RTS
-
-.chunk_25
-       LDY #&00
-       LDX &B2
-       CLC
-       PHP
-.chunk_25_loop
-       PLP
-       LDA &C0FD,X
-       ADC &C237,Y
-       STA &C0FD,X
-       PHP
-       JSR chunk_15
-       BNE chunk_25_loop
-       PLP
        RTS
 
 .chunk_26
