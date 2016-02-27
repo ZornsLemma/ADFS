@@ -2168,8 +2168,8 @@ ENDIF
        BEQ L8C3B
 .L8C2E LDX #&04
        LDY #&0D
-.L8C32 LDA (&B6),Y
-       JSR chunk_27
+.L8C32 
+       JSR chunk_27b
        BNE L8C32
 .L8C3B LDA #&01
        STA &C215        ;; Set flag byte to 1
@@ -2200,8 +2200,8 @@ ENDIF
 ;; -------------------------------
 .L8C70 LDY #&15         ;; Top byte of length
        LDX #&0B         ;; 11+1 bytes to copy
-.L8C74 LDA (&B6),Y      ;; Copy length/exec/load
-       JSR chunk_27
+.L8C74                  ;; Copy length/exec/load
+       JSR chunk_27b
        BPL L8C74        ;; Loop for 12 bytes
        LDY #&0D
        LDX #&0B
@@ -4962,6 +4962,8 @@ ENDIF
        LDA (&B6),Y      ;; Check 'E' bit
        RTS
 
+.chunk_27b
+       LDA (&B6),Y
 .chunk_27
        STA &C215,X      ;;  to workspace
        DEY
