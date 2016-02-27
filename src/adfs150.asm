@@ -4712,6 +4712,11 @@ ENDIF
 ;;
 ;; FSC - Filing System Control
 ;; ===========================
+;; TODO: See dp11 post Sat Feb 27, 2016 4:22 pm; there is
+;; optimisation/simplification potential here:
+;; a) we could possibly use JMP (abs,X) and/or
+;; b) we could modify all called code to consistently expect X/Y in the
+;; registers or in &B4/&B5, not both, then we maybe don't need STX/STY
 .L9E9D STX &B4          ;; Store X and Y in &B4/5
        STY &B5
        STA &C2D6        ;; Store function
@@ -4724,8 +4729,7 @@ ENDIF
        PHA
        LDA L9EBB,X
        PHA
-       LDX &B4          ;; Retrieve X and Y
-       LDY &B5
+       LDX &B4          ;; Retrieve X (Y still set)
 .L9EBA RTS              ;; Jump to routine
 ;;
 ;; FSC Routine Low Bytes
