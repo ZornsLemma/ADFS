@@ -8760,7 +8760,9 @@ endif
        STA &A3
        RTS
 ;;
-.LBDBA JSR LBAFA
+.LBDBA 
+{
+       JSR LBAFA
        LDA #&40
        TSB &A2
        LDY #&07
@@ -8841,6 +8843,7 @@ endif
        LDA #&00
        JSR chunk_13
        BPL LBE41
+}
 ;;
 ;; NMI Routine - called from &0D00
 ;; ===============================
