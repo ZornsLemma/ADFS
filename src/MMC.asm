@@ -1,6 +1,7 @@
 ;; ADFS MMC Card Driver
 ;; (C) 2015 David Banks
 ;; Based on code from MMFS ROM by Martin Mather
+;; TODO: See dp11 post Sat Feb 27, 2016 3:04 pm
 
 trys%=&32
 
