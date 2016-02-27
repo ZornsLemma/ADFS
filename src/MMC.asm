@@ -120,7 +120,7 @@ write_block      =&58
      ;; Try again?
      DEC attempts%
      BEQ ifaildone
-     JMP iloop
+     BRA iloop
 
 .ifaildone
      ;; Give up!
@@ -133,7 +133,7 @@ write_block      =&58
      BNE il1
      LDA #&02
      STA cardsort%
-     JMP iok
+     BRA iok
 
 .isdhc
      JSR UP_ReadByteX
