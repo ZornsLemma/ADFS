@@ -16,6 +16,8 @@ control_block_size_excl_length = 10 ;; TODO: poor name, it's not the size, it's 
 
 top_bit = &80
 
+max_command_name_length = &09
+
 ;; Offsets within a control block
 cb_result = 0
 cb_addr = 1 ;; 4 bytes
@@ -123,10 +125,10 @@ ENDIF
 
 ;; The next set of strings must not straddle a page boundary
 ;; because code assumes the MSB is constant. See code at
-;; .L9283. By locating them here immediately after the ROM header, they don't
+;; .print_argument_table_entry. By locating them here immediately after the ROM header, they don't
 ;; move around when the rest of the code changes so it's easy to maintain the
 ;; required alignment. We check just in case though.
-.help_string_table
+.argument_string_table
 .L9FB1 EQUS "<List Spec>"
        EQUB &00
 .L9FBD EQUS "<Ob Spec>"
@@ -141,9 +143,9 @@ ENDIF
        EQUB &00
 .L9FF4 EQUS "<Title>"
 .L9FFB EQUB &00
-.help_string_table_end
-IF HI(help_string_table) != HI(help_string_table_end)
-       ERROR "help_string_table must not straddle a page boundary"
+.argument_string_table_end
+IF HI(argument_string_table) != HI(argument_string_table_end)
+       ERROR "argument_string_table must not straddle a page boundary"
 ENDIF
 
 ;; TODO: There are some NOPs in this code, it's not clear if we need them, and 
@@ -2970,6 +2972,7 @@ ENDIF
        EQUW L9127-1 ; &06 - Delete
        EQUW L8F88-1 ; &07 - Create
 ;;
+.print_argument_table_entry
 .L9283 TAX
        LDA #>L9FB1
        STA &B7
@@ -2987,7 +2990,7 @@ ENDIF
        BNE L9291
        RTS
 ;;
-.L92A1 JSR LA036
+.L92A1 JSR print_space
        DEX
        BNE L92A1
        RTS
@@ -3029,7 +3032,7 @@ ENDIF
        PHA
        TSX
        LDA &0104,X
-       JSR LA03C
+       JSR print_a
        PLA
        STA &B7
        PLA
@@ -3043,30 +3046,30 @@ ENDIF
 ;; ====================================
 .L92E5 LDX #&0A
        JSR L928F
-       JSR LA036
+       JSR print_space
        LDY #&04         ;; Point to access bits
        LDX #&03         ;; Allow three characters padding
 .L92F1 LDA (&B6),Y      ;; Get access bit
        ROL A
        BCC L92FD        ;; Not set, step to next one
        LDA L931D,Y      ;; Get access character
-       JSR LA03C        ;; Print it
+       JSR print_a        ;; Print it
        DEX              ;; Dec. padding needed
 ;;
 .L92FD DEY              ;; Step to next access bit
        BPL L92F1        ;; Loop until <0
 .L9300 DEX              ;; Dec. padding needed
        BMI L9309        ;; All done
-       JSR LA036        ;; Print a space
+       JSR print_space        ;; Print a space
        BRA L9300        ;; Loop to print padding SAVING: 1 byte
 ;;
 .L9309 LDA #&28
-       JSR LA03C        ;; Print '('
+       JSR print_a        ;; Print '('
        LDY #&19
        JSR chunk_65     ;; Get cycle number and print it
        LDA #&29
-       JSR LA03C        ;; Print ')'
-       JMP LA036        ;; Finish with a space
+       JSR print_a        ;; Print ')'
+       JMP print_space        ;; Finish with a space
 ;;
 ;; Access bits
 ;; ===========
@@ -3079,7 +3082,7 @@ ENDIF
        JSR L932B
        PLA
 .L932B JSR L8462
-       JMP LA03C
+       JMP print_a
 ;;
 .L9331 JSR LA714
        LDA #&D9
@@ -3099,7 +3102,7 @@ ENDIF
        ROL A
        ROL A
        ADC #&30
-       JSR LA03C
+       JSR print_a
        LDA #<L9A68
        STA &B6
        LDA #>L9A68
@@ -3159,7 +3162,7 @@ ENDIF
        JSR LA03A
        BRA L93FF	; SAVING: 1 byte
 ;;
-.L93FC JSR LA036
+.L93FC JSR print_space
 .L93FF 
        JSR clc_lda_b6_adc_1a_sta_b6
        BCC L93E3
@@ -3173,7 +3176,7 @@ ENDIF
        TXA
        BNE L9420
        LDA #&0B
-       JSR LA03C
+       JSR print_a
 .L9420 JSR LA03A
 .L9423 JMP L89D8
 ;;
@@ -3283,7 +3286,7 @@ ENDIF
        BEQ RTS8
 ;;
 .L9508 JSR L92E5        ;; Print filename
-       JSR LA03C        ;; Print another space
+       JSR print_a        ;; Print another space
        JSR chunk_26
 IF PATCH_INFO
 ELSE
@@ -3309,8 +3312,8 @@ ENDIF
        AND #&03
        CMP #&01
        BNE L953D
-       JSR LA036        ;; Print a space
-       JSR LA036        ;; Print a space
+       JSR print_space        ;; Print a space
+       JSR print_space        ;; Print a space
        TXA
        CLC
        ADC #&05
@@ -3866,7 +3869,7 @@ ENDIF
 .L9A0F JSR &FFE0
        CMP #&20
        BCC L9A19
-       JSR LA03C
+       JSR print_a
 .L9A19 AND #&DF
        CMP L84D8,X
        BNE L99DA
@@ -4665,25 +4668,30 @@ ENDIF
 .L9E5C LDA command_table,X
        BMI service_help_exit
        JSR print_inline_to_top_bit_set
-       EQUB &20, &A0
-       LDY #&09
-.L9E68 LDA command_table,X
-       BMI L9E74
-       JSR LA03C
+       EQUB ' ', ' '+top_bit
+       LDY #max_command_name_length
+.command_name_loop
+       LDA command_table,X
+       BMI at_command_address
+       JSR print_a
        INX
        DEY
-       BPL L9E68
-.L9E74 JSR LA036
+       BPL command_name_loop
+.at_command_address
+;; Output spaces to pad all commands to same length
+.space_loop
+       JSR print_space
        DEY
-       BPL L9E74
+       BPL space_loop
        PHX
+       ;; Get argument type byte
        LDA command_table+2,X
        PHA
        JSR lsr_a_4
-       JSR L9283
+       JSR print_argument_table_entry
        PLA
        AND #&0F
-       JSR L9283
+       JSR print_argument_table_entry
        JSR LA03A
        PLX
        INX
@@ -4797,6 +4805,9 @@ ENDIF
        RTS              ;; Jump indirectly to routine
 ;;
 .command_table
+;; Each entry has the form:
+;; EQUS "command":EQUW handler_address:EQUB (arg1type)<<4+arg2type
+;; where arg1type/arg2type are suitable for passing to print_argument_table_entry
 .L9F2D EQUS "ACCESS", >(L9942-1), <(L9942-1), &16
        EQUS "BACK", >(LA4D5-1), <(LA4D5-1), &00
        EQUS "BYE", >(bye-1), <(bye-1), &00
@@ -5288,10 +5299,12 @@ ENDIF
        EQUS "Bad opt"
        EQUB &00
 ;;
+.print_space
 .LA036 LDA #&20
-       BRA LA03C
+       BRA print_a
 ;;
 .LA03A LDA #&0D
+.print_a
 .LA03C PHX
        PHY
        PHA
@@ -5556,13 +5569,13 @@ ENDIF
 .LA270 LDY #&2C
        CLC
        ADC #&30
-.LA275 JSR LA03C
+.LA275 JSR print_a
        CPX #&06
        BEQ LA280
        CPX #&03
        BNE LA284
 .LA280 TYA
-       JSR LA03C
+       JSR print_a
 .LA284 DEX
        BPL LA25F
        JSR print_inline_to_top_bit_set
