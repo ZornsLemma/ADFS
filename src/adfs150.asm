@@ -2474,22 +2474,6 @@ ENDIF
        STA &B5
        RTS
 ;;
-.L8E7A LDY #&09
-.L8E7C 
-       JSR lda_b4_y_and_7f
-       CMP #&21
-       BCC L8E88
-       CMP #&22
-       BNE L8E8A
-.L8E88 LDA #&0D
-.L8E8A CPY #&02
-       BCS L8E90
-       ORA #&80
-.L8E90 STA (&B6),Y
-       DEY
-       BPL L8E7C
-       RTS
-;;
 .L8E96 LDY #&11
 .L8E98 LDA (&B8),Y
        STA &C215,Y
@@ -4990,7 +4974,24 @@ ENDIF
 
 .chunk_31
        JSR L8DFE
-       JMP L8E7A
+;;
+{
+.L8E7A LDY #&09
+.L8E7C 
+       JSR lda_b4_y_and_7f
+       CMP #&21
+       BCC L8E88
+       CMP #&22
+       BNE L8E8A
+.L8E88 LDA #&0D
+.L8E8A CPY #&02
+       BCS L8E90
+       ORA #&80
+.L8E90 STA (&B6),Y
+       DEY
+       BPL L8E7C
+       RTS
+}
 
 .chunk_33
        JSR lda_b4_y_and_7f
