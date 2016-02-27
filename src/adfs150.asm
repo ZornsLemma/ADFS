@@ -910,12 +910,15 @@ ENDIF
        BNE check_drive_ready ;; If no, report a disk error
 ;;
 .L82C9 JSR L849A
+.acknowledge_escape
+{
 .L82CC LDA #&7E
        JSR &FFF4        ;; Acknowledge Escape state
-       JSR L836B        ;; Generate an error
+       JSR generate_error_inline        ;; Generate an error
        EQUB &11         ;; ERR=17
        EQUS "Escape"    ;; REPORT="Escape"
        EQUB &00
+}
 ;;
 ;; Do a disk access
 ;; ----------------
@@ -928,7 +931,7 @@ ENDIF
 IF NOT(PATCH_SD)
        CMP #scsi_error_not_ready ;; Hard drive error &04 (Not ready)?
        BNE check_floppy_protected ;; No, try other errors
-       JSR L836B        ;; Generate an error "Drive not ready"
+       JSR generate_error_inline        ;; Generate an error "Drive not ready"
        EQUB &CD         ;; ERR=205
        EQUS "Drive not ready"
        EQUB &00
@@ -947,7 +950,7 @@ ENDIF
        EQUB &00
 ;;
 .floppy_protected
-       JSR L834E        ;; Generate an error
+       JSR generate_error_inline2        ;; Generate an error
        EQUB &C9         ;; ERR=201
        EQUS "Disc protected"
        EQUB &00
@@ -1023,18 +1026,26 @@ IF NOT(PATCH_SD)        ;; Called only from Floppy and IDE code, not SD code
        JMP L81AD
 ENDIF
 ;;
+;; TODO: rename this once the difference between this and generate_error_inline
+;; is clear
+.generate_error_inline2
+{
 .L834E LDX &C22F
        INX
-       BNE L836B
+       BNE generate_error_inline
        LDX &C22E
        INX
        BNE L8365
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L8365 LDA abs_workspace_current_drive
        STA &C22F
+}
+.generate_error_inline
+{
 .L836B JSR L89D8
        LDA #as_fsm_inconsistent
        TRB zp_adfs_status_flag
+}
 .L8372 LDX #&00
 ;;
 .generate_data_lost_error
@@ -1362,7 +1373,7 @@ ENDIF
 .L85EB LDA &C1FE
        CMP #&F6
        BCC L85FF
-       JSR L834E
+       JSR generate_error_inline2
        EQUB &99         ;; ERR=153
        EQUS "Map full"
        EQUB &00
@@ -1425,12 +1436,12 @@ ENDIF
        DEX
        BPL L8673
        BCS L868D
-.L867F JSR L834E
+.L867F JSR generate_error_inline2
        EQUB &C6         ;; ERR=198
        EQUS "Disc full"
        EQUB &00
 ;;
-.L868D JSR L834E
+.L868D JSR generate_error_inline2
        EQUB &98         ;; ERR=152
        EQUS "Compaction required"
        EQUB &00
@@ -1528,7 +1539,7 @@ ENDIF
        BPL L8758
 ;;
 .error_bad_name
-.L8760 JSR L836B
+.L8760 JSR generate_error_inline
        EQUB &CC         ;; ERR=204
        EQUS "Bad name"
        EQUB &00
@@ -1765,7 +1776,7 @@ ENDIF
        AND #&7F
        STA (&B6),Y
        JSR L8F91
-.L8988 JSR L836B
+.L8988 JSR generate_error_inline
        EQUB &B0         ;; ERR=176
        EQUS "Bad rename"
        EQUB &00
@@ -2144,7 +2155,7 @@ ENDIF
 .L8BDE CMP #&40
        BEQ jmp_error_bad_name
 }
-.L8BE2 JSR L836B
+.L8BE2 JSR generate_error_inline
        EQUB &D6         ;; ERR=210
        EQUS "Not found"
        EQUB &00
@@ -2155,7 +2166,7 @@ ENDIF
        BNE L8BD2        ;; Not found, return NE
        JSR chunk_26
        BPL L8BD0        ;; Not 'E', return EQ for found
-.L8BFB JSR L836B        ;; Error 'Access violation'
+.L8BFB JSR generate_error_inline        ;; Error 'Access violation'
        EQUB &BD         ;; ERR=189
        EQUS "Access violation"
        EQUB &00
@@ -2306,7 +2317,7 @@ ENDIF
 .L8D1B LDY #&02
        LDA (&B6),Y
        BPL L8D2C
-       JSR L836B
+       JSR generate_error_inline
        EQUB &C3         ;; ERR=195
        EQUS "Locked"
        EQUB &00
@@ -2337,7 +2348,7 @@ ENDIF
        BEQ L8D74
        JSR chunk_53
        BNE L8D74
-.L8D5E JSR L836B
+.L8D5E JSR generate_error_inline
        EQUB &C2         ;; ERR=194
        EQUS "Can't - File open"
        EQUB &00
@@ -2407,7 +2418,7 @@ ENDIF
        BNE L8DE0
 .L8DE6 JMP L8760
 ;;
-.L8DE9 JSR L836B
+.L8DE9 JSR generate_error_inline
        EQUB &Fd         ;; ERR=194
        EQUS "Wild cards"
        EQUB &00
@@ -2440,7 +2451,7 @@ ENDIF
 .check_dir_full_error
 .L8E24 LDA &C8B1
        BEQ dir_not_full
-       JSR L836B
+       JSR generate_error_inline
        EQUB &B3         ;; ERR=179
        EQUS "Dir full"
        EQUB &00
@@ -2641,7 +2652,7 @@ ENDIF
        BNE L9003        ;; No, jump to give error
        CPX &C0FF        ;; Does sector 0 sum match?
        BEQ L8FF2        ;; Yes, exit
-.L9003 JSR L834E        ;; Generate error
+.L9003 JSR generate_error_inline2        ;; Generate error
        EQUB &A9         ;; ERR=169
        EQUS "Bad FS map"
        EQUB &00
@@ -2849,7 +2860,7 @@ ENDIF
        JSR LA4B1
        PLP
        BEQ L9177
-       JSR L836B
+       JSR generate_error_inline
        EQUB &B4         ;; ERR=180
        EQUS "Dir not empty"
        EQUB &00
@@ -2869,7 +2880,7 @@ ENDIF
        BNE L91CB
        DEX
        BPL L91AB
-       JSR L836B
+       JSR generate_error_inline
        EQUB &96         ;; ERR=150
        EQUS "Can't delete CSD"
        EQUB &00
@@ -2883,7 +2894,7 @@ ENDIF
        BNE L91F9
        DEX
        BPL L91D5
-       JSR L836B
+       JSR generate_error_inline
        EQUB &97         ;; ERR=151
        EQUS "Can't delete Library"
        EQUB &00
@@ -3353,7 +3364,7 @@ ENDIF
        LDY #&09
        JSR chunk_23
        BEQ L95BE
-.L95AB JSR L836B
+.L95AB JSR generate_error_inline
        EQUB &C4         ;; ERR=196
        EQUS "Already exists"
        EQUB &00
@@ -3848,7 +3859,7 @@ ENDIF
        BRA L99BD
 ;;
 .L99DA JSR print_cr
-       JSR L836B
+       JSR generate_error_inline
        EQUB &92         ;; ERR=146
        EQUS "Aborted"
        EQUB &00
@@ -3883,7 +3894,7 @@ ENDIF
        PHA
        BIT &FF
        BPL L9A36
-       JMP L82CC
+       JMP acknowledge_escape
 ;;
 .L9A36 JSR L8FE8
        BNE L9A47
@@ -5295,7 +5306,7 @@ ENDIF
        STA &C1FD
        JMP L8F91
 ;;
-.LA02A JSR L836B
+.LA02A JSR generate_error_inline
        EQUB &CB         ;; ERR=203
        EQUS "Bad opt"
        EQUB &00
@@ -5616,7 +5627,7 @@ ENDIF
        JMP LA377
 ;;
 .error_bad_compact
-.LA2DB JSR L836B
+.LA2DB JSR generate_error_inline
        EQUB &94         ;; ERR=148
        EQUS "Bad compact"
        EQUB &00
@@ -5730,7 +5741,7 @@ ENDIF
        LDY &C1
 .L9A4C JMP (&021E)      ;; Pass on to FSC to call libfs
 ;;
-.LA3CB JSR L836B        ;; Generate error
+.LA3CB JSR generate_error_inline        ;; Generate error
        EQUB &FE         ;; ERR=254
        EQUS "Bad command"
        EQUB &00
@@ -5782,7 +5793,7 @@ ENDIF
        AND (&B6),Y
        INC A
        BNE LA43F
-       JSR L836B
+       JSR generate_error_inline
        EQUB &93         ;; ERR=147
        EQUS "No!"
        EQUB &00
@@ -5796,7 +5807,7 @@ ENDIF
        JSR L8BBE
        JSR chunk_26
        ;; We don't need this LDY #&00 now we have ORA (&B6) not ORA (&B6),Y.
-       ;; LA45C does JSR L8C1B which immediately does LDY. L8BFB does JSR L836B
+       ;; LA45C does JSR L8C1B which immediately does LDY. L8BFB does JSR generate_error_inline
        ;; which does JSR L89D8. L89D8 will either LDY inside
        ;; scsi_op_load_fsm, or it will hit L89EF from where it will LDY
        ;; #&0A or hit L8A22 which will LDY.
@@ -6127,7 +6138,7 @@ ENDIF
 .RTS13
 .LA72E RTS
 ;;
-.LA72F JSR L834E        ;; Generate error
+.LA72F JSR generate_error_inline2        ;; Generate error
        EQUB &A8         ;; ERR=168
        EQUS "Broken directory"
        EQUB &00
@@ -6296,7 +6307,7 @@ ENDIF
        BPL LA8C7
 .LA8B8 BIT &FF
        BPL LA8BF
-       JMP L82CC
+       JMP acknowledge_escape
 ;;
 .LA8BF JSR L8964
        BEQ LA8AF
@@ -6475,7 +6486,7 @@ ENDIF
 
        BRA chunk_4
 ;;
-.LAA48 JSR L836B
+.LAA48 JSR generate_error_inline
        EQUB &B7         ;; ERR=183
        EQUS "Outside file"
        EQUB &00
@@ -6905,7 +6916,7 @@ ENDIF
        BPL LACE8
        JMP LA76E
 ;;
-.LACF8 JSR L836B
+.LACF8 JSR generate_error_inline
        EQUB &DE         ;; ERR=222
        EQUS "Channel"
        EQUB &00
@@ -6977,7 +6988,7 @@ ENDIF
 .LAD62 LDA &C3AC,X
        AND #&C8
        STA &C3AC,X
-       JSR L836B        ;; Generate an error
+       JSR generate_error_inline        ;; Generate an error
        EQUB &DF         ;; ERR=150
        EQUS "EOF"
        EQUB &00
@@ -7355,7 +7366,7 @@ ENDIF
        STZ &C2CF
        TAY
        BMI LB112
-.LB0FA JSR L836B
+.LB0FA JSR generate_error_inline
        EQUB &C1         ;; ERR=193
        EQUS "Not open for update"
        EQUB &00
@@ -7496,7 +7507,7 @@ ENDIF
        BEQ LB260        ;; Found a spare channel
        DEX              ;; Loop to next channel
        BPL LB240        ;; Keep going until run out of channels
-       JSR L836B        ;; Generate an error
+       JSR generate_error_inline        ;; Generate an error
        EQUB &C0         ;; ERR=192
        EQUS "Too many open files"
        EQUB &00
@@ -7784,7 +7795,7 @@ ENDIF
        STA &C2C2
        RTS
 ;;
-.LB4FF JSR L836B
+.LB4FF JSR generate_error_inline
        EQUB &C8         ;; ERR=200
        EQUS "Disc changed"
        EQUB &00
