@@ -5570,9 +5570,9 @@ ENDIF
        LDA #&84
        JSR &FFF4
        TXA
-       BNE LA2DB
+       BNE error_bad_compact
        TYA
-       BMI LA2DB
+       BMI error_bad_compact
        STA &C260
        LDA #&80
        SEC
@@ -5580,6 +5580,7 @@ ENDIF
        STA &C261
        JMP LA377
 ;;
+.error_bad_compact
 .LA2DB JSR L836B
        EQUB &94         ;; ERR=148
        EQUS "Bad compact"
@@ -5593,7 +5594,7 @@ ENDIF
        JSR chunk_43
        BEQ LA2FF
        CMP #&2C
-       BNE LA2DB
+       BNE error_bad_compact
 .LA2FF INY
        JSR chunk_43
        BEQ LA2FF
@@ -5611,11 +5612,11 @@ ENDIF
 .LA31F INY
        JSR chunk_43
        BEQ LA31F
-       BCS LA2DB
+       BCS error_bad_compact
        LDX #&03
 .LA32A LDA &C215,X
        CMP #&30
-       BCC LA2DB
+       BCC error_bad_compact
        CMP #&3A
        BCS LA33D
        SEC
@@ -5624,21 +5625,21 @@ ENDIF
        BPL LA34C
 .LA33D AND #&5F
        CMP #&41
-       BCC LA2DB
+       BCC error_bad_compact
        CMP #&47
-       BCS LA2DB
+       BCS error_bad_compact
        SBC #&36
        STA &C215,X
 .LA34C DEX
        BPL LA32A
        INX
        JSR LA389
-       BMI LA2DB
+       BMI error_bad_compact
        STA &C260
        LDX #&02
        JSR LA389
        BPL LA362
-.LA35F JMP LA2DB
+.LA35F JMP error_bad_compact
 ;;
 .LA362 BEQ LA35F
        STA &C261
@@ -5648,7 +5649,7 @@ ENDIF
        BPL LA377
        CMP #&80
        BEQ LA377
-       JMP LA2DB
+       JMP error_bad_compact
 ;;
 .LA377 JSR LB210
        JSR wait_for_ensuring
