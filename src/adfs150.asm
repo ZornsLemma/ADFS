@@ -4618,7 +4618,8 @@ ENDIF
        LDA #&09
 .L9E28 RTS
 ;;
-.L9E29 INY
+.L9E29 
+       INY
        LDA (&F2),Y
        CMP #&20
        BCS L9E28
@@ -4627,9 +4628,12 @@ ENDIF
        BCC L9E22
 .L9E34 JSR L9E29
        BNE L9E34
+{
 .L9E39 JSR L9E29
        BEQ L9E39
+}
 .L9E3E LDX #&03
+{
 .L9E40 LDA (&F2),Y
        CMP #&2E
        BEQ L9E57
@@ -4644,12 +4648,12 @@ ENDIF
        BCS L9E34
 .L9E57 JSR L9DF6
        LDX #&00
-.L9E5C LDA L9F2D,X
+.L9E5C LDA command_table,X
        BMI L9E22
        JSR L92A8
        EQUB &20, &A0
        LDY #&09
-.L9E68 LDA L9F2D,X
+.L9E68 LDA command_table,X
        BMI L9E74
        JSR LA03C
        INX
@@ -4659,7 +4663,7 @@ ENDIF
        DEY
        BPL L9E74
        PHX
-       LDA L9F2D+2,X
+       LDA command_table+2,X
        PHA
        JSR lsr_a_4
        JSR L9283
@@ -4672,6 +4676,7 @@ ENDIF
        INX
        INX
        BRA L9E5C
+}
 ;;
 .L9E95 EQUB <L9FFB
        EQUB <L9FB1
@@ -4743,7 +4748,7 @@ ENDIF
        LDY #&FF         ;; Point to text line minus 1
 .L9EE7 INX
        INY
-       LDA L9F2D,X      ;; Get byte from command table
+       LDA command_table,X      ;; Get byte from command table
        BMI L9F08        ;; End of entry
        CMP (&B4),Y      ;; Compare with current character
        BEQ L9EE7        ;; Jump with match
@@ -4752,7 +4757,7 @@ ENDIF
        BEQ L9EE7        ;; Jump with match
        DEX
 .L9EF9 INX              ;; Loop to end of entry
-       LDA L9F2D,X
+       LDA command_table,X
        BPL L9EF9
        LDA (&B4),Y      ;; Get current character
        CMP #&2E         ;; Is it a '.'?
@@ -4771,12 +4776,13 @@ ENDIF
        CLC
        JSR chunk_55
        JSR LA50D        ;; Skip spaces, etc.
-.L9F24 LDA L9F2D,X      ;; Get command address
+.L9F24 LDA command_table,X      ;; Get command address
        PHA              ;; Stack it
-       LDA L9F2D+1,X
+       LDA command_table+1,X
        PHA
        RTS              ;; Jump indirectly to routine
 ;;
+.command_table
 .L9F2D EQUS "ACCESS", >(L9942-1), <(L9942-1), &16
        EQUS "BACK", >(LA4D5-1), <(LA4D5-1), &00
        EQUS "BYE", >(bye-1), <(bye-1), &00
