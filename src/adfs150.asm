@@ -4798,38 +4798,35 @@ ENDIF
        CLC
        JSR chunk_55
        JSR LA50D        ;; Skip spaces, etc.
-.L9F24 LDA command_table,X      ;; Get command address
-       PHA              ;; Stack it
-       LDA command_table+1,X
-       PHA
-       RTS              ;; Jump indirectly to routine
+.L9F24 JMP (L9F2D,X)    ;; Get command address and jump to it
 ;;
 .command_table
 ;; Each entry has the form:
 ;; EQUS "command":EQUW handler_address:EQUB (arg1type)<<4+arg2type
 ;; where arg1type/arg2type are suitable for passing to print_argument_table_entry
-.L9F2D EQUS "ACCESS", >(L9942-1), <(L9942-1), &16
-       EQUS "BACK", >(LA4D5-1), <(LA4D5-1), &00
-       EQUS "BYE", >(bye-1), <(bye-1), &00
-       EQUS "CDIR", >(L9577-1), <(L9577-1), &20
-       EQUS "COMPACT", >(LA2B6-1), <(LA2B6-1), &50
-       EQUS "COPY", >(LA849-1), <(LA849-1), &13
-       EQUS "DESTROY", >(L99E9-1), <(L99E9-1), &10
-       EQUS "DIR", >(L9546-1), <(L9546-1), &20
-       EQUS "DISMOUNT", >(LA151-1), <(LA151-1), &40
-       EQUS "FREE", >(LA063-1), <(LA063-1), &00
-       EQUS "LCAT", >(LA4BD-1), <(LA4BD-1), &00
-       EQUS "LEX", >(LA4C9-1), <(LA4C9-1), &00
-       EQUS "LIB", >(LA482-1), <(LA482-1), &30
-       EQUS "MAP", >(LA092-1), <(LA092-1), &00
+;;
+.L9F2D EQUS "ACCESS", <L9942, >L9942, &16
+       EQUS "BACK", <LA4D5, >LA4D5, &00
+       EQUS "BYE", <bye, >bye, &00
+       EQUS "CDIR", <L9577, >L9577, &20
+       EQUS "COMPACT", <LA2B6, >LA2B6, &50
+       EQUS "COPY", <LA849, >LA849, &13
+       EQUS "DESTROY", <L99E9, >L99E9, &10
+       EQUS "DIR", <L9546, >L9546, &20
+       EQUS "DISMOUNT", <LA151, >LA151, &40
+       EQUS "FREE", <LA063, >LA063, &00
+       EQUS "LCAT", <LA4BD, >LA4BD, &00
+       EQUS "LEX", <LA4C9, >LA4C9, &00
+       EQUS "LIB", <LA482, >LA482, &30
+       EQUS "MAP", <LA092, >LA092, &00
 IF PATCH_IDE OR PATCH_SD
-       EQUS "MOUNT", >(MountCheck-1), <(MountCheck-1), &40
+       EQUS "MOUNT", <MountCheck, >MountCheck, &40
 ELSE
-       EQUS "MOUNT", >(LA19E-1), <(LA19E-1), &40
+       EQUS "MOUNT", <LA19E, >LA19E, &40
 ENDIF
-       EQUS "RENAME", >(LA541-1), <(LA541-1), &22
-       EQUS "TITLE", >(LA292-1), <(LA292-1), &70
-       EQUS >(LA3DB-1), <(LA3DB-1)
+       EQUS "RENAME", <LA541, >LA541, &22
+       EQUS "TITLE", <LA292, >LA292, &70
+       EQUS >LA3DB, >LA3DB
 
 .chunk_1
        LDA &00,X
