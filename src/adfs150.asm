@@ -4463,10 +4463,9 @@ ENDIF
 ;; Serv26 - *SHUT
 ;; ==============
 .L9D05 PHY
-       JSR LA744
+       JSR LA744        ;; returns with A=&00
        LDY #&AC
        LDX #&09
-       LDA #&00
 .L9D0F ORA (&BA),Y
        INY
        DEX
@@ -6165,8 +6164,8 @@ ENDIF
        EQUS "Broken directory"
        EQUB &00
 ;;
-;; Get pointer to workspace into &BA/B
-;; ===================================
+;; Get pointer to workspace into &BA/B, returning with A=&00
+;; =========================================================
 .LA744 LDX &F4
        LDA &0DF0,X
        STA &BB
