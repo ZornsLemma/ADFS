@@ -5219,7 +5219,6 @@ ENDIF
        RTS
 
 .chunk_11
-       LDY #&FF
        JSR LBFAB
        STA &A4
        STY &A5
@@ -8776,7 +8775,6 @@ endif
 .LBDD7 LDA &0D58
        TAX
        LDA &0D59
-       LDY #&FF
        JSR LBFAB
        CMP #&00
        BNE LBDE9
@@ -8793,7 +8791,6 @@ endif
        SEC
        SBC &0D58
        LDX #&00
-       LDY #&FF
        JSR LBFAB
        STY &0D57
        STA &0D59
@@ -8981,13 +8978,18 @@ endif
 ;;           Y=&FF
 ;; On exit:  Y=&XA DIV 16
 ;;           A=&XA MOD 16
-.LBFAB SEC
+.LBFAB 
+{
+       LDY #&FF
+.loop
+       SEC
        SBC #&10
        INY
-       BCS LBFAB
+       BCS loop
        DEX
-       BPL LBFAB
+       BPL loop
        ADC #&10
+}
 .LBFB6 RTS
 ;;                                         Bug, the rest of these checks shouldn't happen
 ;;                                         Should just drop straight into 'Sector out of range'
