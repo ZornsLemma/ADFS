@@ -3159,7 +3159,7 @@ ENDIF
        BNE L93FC
        LDA #&04
        STA &C22B
-       JSR LA03A
+       JSR print_cr
        BRA L93FF	; SAVING: 1 byte
 ;;
 .L93FC JSR print_space
@@ -3177,7 +3177,7 @@ ENDIF
        BNE L9420
        LDA #&0B
        JSR print_a
-.L9420 JSR LA03A
+.L9420 JSR print_cr
 .L9423 JMP L89D8
 ;;
 .L9426 EQUB <L942A, <L942E, <L9432, <L9436
@@ -3322,7 +3322,7 @@ ENDIF
        INX
        CPX #&1A
        BNE L9522
-.L9543 JMP LA03A        ;; Print newline
+.L9543 JMP print_cr        ;; Print newline
 ;;
 .L9546 JSR L9486
        LDY #&09
@@ -3847,7 +3847,7 @@ ENDIF
        PLY
        BRA L99BD
 ;;
-.L99DA JSR LA03A
+.L99DA JSR print_cr
        JSR L836B
        EQUB &92         ;; ERR=146
        EQUS "Aborted"
@@ -3875,7 +3875,7 @@ ENDIF
        BNE L99DA
        DEX
        BPL L9A0F
-       JSR LA03A
+       JSR print_cr
        STZ &C2D5
 .L9A29 LDA &B4
        PHA
@@ -4692,7 +4692,7 @@ ENDIF
        PLA
        AND #&0F
        JSR print_argument_table_entry
-       JSR LA03A
+       JSR print_cr
        PLX
        INX
        INX
@@ -5303,6 +5303,7 @@ ENDIF
 .LA036 LDA #&20
        BRA print_a
 ;;
+.print_cr
 .LA03A LDA #&0D
 .print_a
 .LA03C PHX
@@ -5369,7 +5370,7 @@ ENDIF
        JSR L9322
        DEY
        BPL LA0CB
-       JSR LA03A
+       JSR print_cr
        LDX &C6
        BRA LA0A9
 ;;
