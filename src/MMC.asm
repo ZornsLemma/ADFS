@@ -53,11 +53,10 @@ write_block      =&58
 
 .MMC_SetCommand
      STA cmdseq%+1
-     LDA #0
-     STA cmdseq%+2
-     STA cmdseq%+3
-     STA cmdseq%+4
-     STA cmdseq%+5
+     STZ cmdseq%+2
+     STZ cmdseq%+3
+     STZ cmdseq%+4
+     STZ cmdseq%+5
      LDA #&FF
      STA cmdseq%
      STA cmdseq%+6                   ;; token
@@ -270,7 +269,7 @@ write_block      =&58
      ORA &C317      ;; Add in current drive
      STA &C333      ;; Store for any error
 
-     CLC            ;; Shift into bits 0-2
+                    ;; Shift into bits 0-2
      ROL A
      ROL A
      ROL A
