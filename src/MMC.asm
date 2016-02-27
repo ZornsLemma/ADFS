@@ -183,7 +183,7 @@ write_block      =&58
 
      ;; Failed to set block length
 .blkerr
-     JSR L8372
+     JSR generate_error_inline3
      EQUB &CD
      EQUS "MMC Set block len error"
      EQUB &00
@@ -212,7 +212,7 @@ write_block      =&58
 
 ;; Failed to initialise card!
 .carderr
-     JSR L8372
+     JSR generate_error_inline3
      EQUB &CD
      EQUS "Card?"
      EQUB &00
@@ -319,13 +319,13 @@ write_block      =&58
      RTS
 
 .invalidDrive
-     JSR L8372        ;; Generate error
+     JSR generate_error_inline3        ;; Generate error
      EQUB &A9         ;; ERR=169
      EQUS "Invalid drive"
      EQUB &00
 
 .overflow
-     JSR L8372        ;; Generate error
+     JSR generate_error_inline3        ;; Generate error
      EQUB &A9         ;; ERR=169
      EQUS "Sector overflow"
      EQUB &00
@@ -444,13 +444,13 @@ write_block      =&58
      RTS
 
 .noMBR
-     JSR L8372
+     JSR generate_error_inline3
      EQUB &CD
      EQUS "No MBR!"
      EQUB &00
     
 .noADFS
-     JSR L8372
+     JSR generate_error_inline3
      EQUB &CD
      EQUS "No ADFS partitions!"
      EQUB &00

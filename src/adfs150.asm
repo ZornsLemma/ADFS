@@ -944,7 +944,7 @@ ENDIF
                         ;; error message
        JSR L89D8
        TAX
-       JSR generate_data_lost_error
+       JSR generate_error_inline4
        EQUB &C7         ;; ERR=199
        EQUS "Disc error"
        EQUB &00
@@ -1046,9 +1046,16 @@ ENDIF
        LDA #as_fsm_inconsistent
        TRB zp_adfs_status_flag
 }
+;; TODO: rename this once the difference between this and generate_error_inline
+;; is clear
+.generate_error_inline3
+{
 .L8372 LDX #&00
+}
 ;;
-.generate_data_lost_error
+;; TODO: rename this once the difference between this and generate_error_inline
+;; is clear
+.generate_error_inline4
 .L8374 PLA
        STA &B2
        PLA
@@ -6117,7 +6124,7 @@ ENDIF
 .check_loaded_directory
 .LA6FD JSR chunk_52
        BNE LA72E        ;; Directory loaded, exit
-       JSR L8372        ;; Generate error
+       JSR generate_error_inline3        ;; Generate error
        EQUB &A9         ;; ERR=169
        EQUS "No directory"
        EQUB &00
@@ -6179,7 +6186,7 @@ ENDIF
        BEQ LA766        ;; Exit if it does
 .LA76E LDA #&0F
        STA &C2CE
-       JSR L8372        ;; Generate error
+       JSR generate_error_inline3        ;; Generate error
        EQUB &AA         ;; ERR=170
        EQUS "Bad sum"
        EQUB &00
@@ -6745,7 +6752,7 @@ ENDIF
        BEQ LABE6        ;; Jump forward to exit
        STZ &C331        ;; Clear the flag
        LDX abs_workspace_error+awe_channel_num
-       JSR generate_data_lost_error ;; Generate 'Data lost' error
+       JSR generate_error_inline4 ;; Generate 'Data lost' error
        EQUB &CA         ;; ERR=202
        EQUS "Data lost, channel"
        EQUB &00
