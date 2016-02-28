@@ -567,7 +567,6 @@ ELIF PATCH_IDE
        LDA (&80),Y
 .IOWrite_sta_fc40
        STA &FC40        ;; Write byte to SCSI data port
-       BRA TransferByte
 .TransferByte
        INY              ;; Loop for 256 bytes
        BNE TransferLoop
