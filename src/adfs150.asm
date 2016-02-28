@@ -121,6 +121,8 @@ scsi_error_floppy_protected = &40 ;; Floppy drive error &10 (WRPROT)
        JMP service_handler ;; Jump to service handler
        EQUB &82         ;; Service ROM, 6502 code
        EQUB copyright_string - rom_header         ;; Offset to (C)
+;; TODO: Should we bump the version numbers for IDE and ORIG? The code is very
+;; different, even if we currently hope it's functionally equivalent.
 IF PATCH_SD
        EQUB &57         ;; Binary version number
 ELIF PATCH_IDE
