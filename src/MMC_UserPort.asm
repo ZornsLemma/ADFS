@@ -467,7 +467,6 @@ IF _TURBOMMC
     BEQ wait
 }
     STZ sr%		   ;; dummy write
-    LDA #4
 {
 .wait
     BIT ifr%
@@ -497,7 +496,6 @@ IF _TURBOMMC
     BEQ wait
 }
     STZ sr%		   ;; dummy write
-    LDA #4
 {
 .wait
     BIT ifr%
