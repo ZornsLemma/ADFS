@@ -259,7 +259,7 @@ IF PATCH_SD
        AND #&01
        RTS
 .MountCheck
-       JSR LA19E        ;; Do *MOUNT, then reselect ADFS
+       JSR mount_core   ;; Do *MOUNT, then reselect ADFS
        JMP L9B4A
 ELIF PATCH_IDE
 .ReadBreak
@@ -272,7 +272,7 @@ ELIF PATCH_IDE
        BEQ WaitForData
        RTS
 .MountCheck
-       JSR LA19E        ;; Do *MOUNT, then reselect ADFS
+       JSR mount_core   ;; Do *MOUNT, then reselect ADFS
        JMP L9B4A
 ELSE
 .L807E LDY #&00         ;; Useful place to set Y=0
@@ -1533,7 +1533,7 @@ ENDIF
 .L8737 RTS
 
 ;;
-.L8738 JSR LA50D
+.L8738 JSR advance_b4_to_first_name_character
        JSR L8D79
        LDY #&00
        STY &C2C0
@@ -1649,7 +1649,7 @@ ENDIF
        BEQ L87D1
        BNE L87EB
 
-.L880C JSR LA50D
+.L880C JSR advance_b4_to_first_name_character
        JSR L93CC
        JSR LA714
 .L8815 
@@ -2855,7 +2855,7 @@ ENDIF
        RTS
 
 ;;
-       JSR LA50D
+       JSR advance_b4_to_first_name_character
        JSR chunk_9
 
 .L9127 JSR L8CD4
@@ -3177,7 +3177,7 @@ ENDIF
 ;;
 ;; FSC 5 - *CAT
 ;; ============
-.L93D5 JSR LA50D
+.L93D5 JSR advance_b4_to_first_name_character
        JSR L9478
 .L93DB JSR L9331
        LDA #&04
@@ -3758,7 +3758,7 @@ ENDIF
        ;; We don't need this LDY #&00; it's intended for the following two STA
        ;; (zp) instructions which used to be STA (zp),Y. We exit this loop at
        ;; L98CE which does JSR L9486 which does JSR L8875
-       ;; which does JSR L8738 which does JSR LA50D which does LDY #&00, so no
+       ;; which does JSR L8738 which does JSR advance_b4_to_first_name_character which does LDY #&00, so no
        ;; following code relies on our assignment to Y.
        ;; LDY #&00
        LDA &B6
@@ -3827,14 +3827,14 @@ ENDIF
 ;;
 .L996A STA &C22B        ;; Store 'E' or 'D'+'R' bit
        LDY #&00         ;; Step past filename
-.L996F JSR chunk_43
+.L996F JSR get_character_b4_y_and_test_space
        BCC L99C0
        BEQ L997E
        CMP #&22
        BEQ L997E
        INY
        BNE L996F
-.L997E JSR chunk_43
+.L997E JSR get_character_b4_y_and_test_space
        BCC L99C0
        BEQ L998A
        CMP #&22
@@ -4800,7 +4800,7 @@ ENDIF
 .L9ED3 JSR wait_for_ensuring
        LDA #&A2
        JSR sta_b8_lda_c2_sta_b9
-       JSR LA50D        ;; Skip spaces, etc
+       JSR advance_b4_to_first_name_character        ;; Skip spaces, etc
        LDX #&FD         ;; Point to table start minus 3
 .L9EE3 INX
        INX
@@ -4834,7 +4834,7 @@ ENDIF
 .L9F17 TYA              ;; Update &B4/5 to point to params
        CLC
        JSR chunk_55
-       JSR LA50D        ;; Skip spaces, etc.
+       JSR advance_b4_to_first_name_character        ;; Skip spaces, etc.
 .L9F24 JMP (L9F2D,X)    ;; Get command address and jump to it
 ;;
 .command_table
@@ -4859,7 +4859,7 @@ ENDIF
 IF PATCH_IDE OR PATCH_SD
        EQUS "MOUNT", <MountCheck, >MountCheck, &40
 ELSE
-       EQUS "MOUNT", <LA19E, >LA19E, &40
+       EQUS "MOUNT", <mount_core, >mount_core, &40
 ENDIF
        EQUS "RENAME", <LA541, >LA541, &22
        EQUS "TITLE", <LA292, >LA292, &70
@@ -5089,9 +5089,9 @@ ENDIF
        AND #&7F
        RTS
 
-.chunk_43
+.get_character_b4_y_and_test_space
        LDA (&B4),Y      ;; Get current character
-       CMP #&20         ;; Is it a space?
+       CMP #' '         ;; Is it a space?
        RTS
 
 .chunk_44
@@ -5468,7 +5468,7 @@ ELSE
        EQUB &00
 ENDIF
 ;;
-.LA135 JSR LA50D
+.LA135 JSR advance_b4_to_first_name_character
        LDY abs_workspace_current_drive
        INY
        BEQ LA13F
@@ -5520,6 +5520,7 @@ ENDIF
 ;;
 ;; *MOUNT
 ;; ======
+.mount_core
 .LA19E JSR LA135        ;; Scan drive number parameter
 .LA1A1 LDA &C26F        ;; Get drive
        STA abs_workspace_current_drive        ;; Set current drive
@@ -5620,7 +5621,7 @@ ENDIF
        RTS
 .LA292 JSR LB546
        JSR L8FF3
-       JSR LA50D
+       JSR advance_b4_to_first_name_character
        LDY #&00
 .LA29D JSR chunk_33
        BEQ LA2A9
@@ -5633,7 +5634,7 @@ ENDIF
        BNE LA29D
        JMP L8F91
 ;;
-.LA2B6 JSR LA50D
+.LA2B6 JSR advance_b4_to_first_name_character
        jsr ldy_0_lda_b4_y
        CMP #&21
        BCS LA2EB
@@ -5661,12 +5662,12 @@ ENDIF
        LDA (&B4),Y
        STA &C216
        INY
-       JSR chunk_43
+       JSR get_character_b4_y_and_test_space
        BEQ LA2FF
        CMP #&2C
        BNE error_bad_compact
 .LA2FF INY
-       JSR chunk_43
+       JSR get_character_b4_y_and_test_space
        BEQ LA2FF
        STA &C217
        INY
@@ -5680,7 +5681,7 @@ ENDIF
        STA &C217
        DEY
 .LA31F INY
-       JSR chunk_43
+       JSR get_character_b4_y_and_test_space
        BEQ LA31F
        BCS error_bad_compact
        LDX #&03
@@ -5906,26 +5907,39 @@ ENDIF
        CLC
        JSR chunk_55
 ;;
+.advance_b4_to_first_name_character
+{
 .LA50D 
        LDY #&00
+       ;; The C flag in the stacked flags register is used to track whether
+       ;; we've seen a quote or not; C clear means we haven't. The first quote
+       ;; we see sets the flag and we treat the quote like a space, the second
+       ;; quote we see causes a bad name error if we haven't hit a non-space,
+       ;; non-quote character since. I think this effectively prevents names
+       ;; which are the empty string or nothing but spaces.
        CLC
        PHP
-.LA511 JSR chunk_43
-       BCC LA528        ;; Control character,
-       BEQ LA525        ;; Space,
-       CMP #&22         ;; Is it a quote?
-       BNE LA528
+.loop
+.LA511 JSR get_character_b4_y_and_test_space
+       BCC name_character    ;; Control character,
+       BEQ space             ;; Space,
+       CMP #'"'              ;; Is it a quote?
+       BNE name_character
        PLP
-       BCC LA523
-       JMP L8760
+       BCC first_quote_seen
+       JMP error_bad_name
 ;;
+.first_quote_seen
 .LA523 SEC
        PHP
+.space
 .LA525 INY
-       BNE LA511
+       BNE loop
+.name_character
 .LA528 TYA
        PLP
        CLC
+}
 .chunk_55
 {
        ADC &B4
@@ -5933,6 +5947,7 @@ ENDIF
        BCC chunk_55_rts
        INC &B5
 .chunk_55_rts
+;; (&B4) now points to the first character of the name.
        RTS
 }
 
