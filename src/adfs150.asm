@@ -5916,7 +5916,8 @@ ENDIF
        ;; we see sets the flag and we treat the quote like a space, the second
        ;; quote we see causes a bad name error if we haven't hit a non-space,
        ;; non-quote character since. I think this effectively prevents names
-       ;; which are the empty string or nothing but spaces.
+       ;; which are the empty string or nothing but spaces. This also strips off
+       ;; leading spaces in a quoted name.
        CLC
        PHP
 .loop
