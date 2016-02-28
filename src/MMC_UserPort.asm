@@ -445,6 +445,10 @@ ENDIF
 
         
 ;; *** Write 512 byte sector from datptr or tube, skipping alternative bytes ***
+;; TODO: There is a potential space optimisation here at the expense of
+;; performance; see
+;; http://www.stardot.org.uk/forums/viewtopic.php?f=3&t=10519&start=210, posts
+;; around Sun Feb 28, 2016 4:29 pm
 .MMC_Write256
 IF _TURBOMMC
     JSR ShiftRegMode6
