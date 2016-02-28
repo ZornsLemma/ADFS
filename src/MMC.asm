@@ -68,8 +68,7 @@ write_block      =&58
 ;; corrupts A,X,Y
 .MMC_INIT
 {
-     LDA #0
-     STA mmcstate%
+     STZ mmcstate%
 
      LDA #trys%
      STA attempts%
@@ -103,7 +102,7 @@ write_block      =&58
      LDA #&87
      STA cmdseq%+6
      JSR MMC_DoCommand
-     CMP #1
+     DEC A
      BEQ isdhc
 
      LDA #&02
@@ -119,8 +118,7 @@ write_block      =&58
 .ifail
      ;; Try again?
      DEC attempts%
-     BEQ ifaildone
-     BRA iloop
+     BNE iloop
 
 .ifaildone
      ;; Give up!
