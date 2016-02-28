@@ -15,6 +15,7 @@ control_block_full_size = 16
 control_block_size_excl_length = 10 ;; TODO: poor name, it's not the size, it's the highest byte to copy
 
 top_bit = &80
+top_bit_cr = &0D + top_bit
 
 max_command_name_length = &09
 
@@ -3165,7 +3166,7 @@ ENDIF
        STA &B7
        LDX #&0A
        JSR chunk_64
-       EQUB &0D,&8D
+       EQUB &0D,top_bit_cr
 .L93CC 
 .chunk_42
        LDA #&05
@@ -4243,7 +4244,7 @@ ENDIF
        LDA #&43         ;; ...change key pressed to 'fadfs'
        PHA
 .L9B85 JSR print_inline_to_top_bit_set        ;; Print FS banner
-       EQUS "Acorn ADFS", &0D, &8D
+       EQUS "Acorn ADFS", &0D, top_bit_cr
 ;;
 ;; Select ADFS
 ;; ===========
@@ -4637,11 +4638,11 @@ ENDIF
 ;;
 .L9DF6 JSR print_inline_to_top_bit_set
 IF PATCH_SD
-       EQUS &0D, "Advanced DFS 1.57", &8D
+       EQUS &0D, "Advanced DFS 1.57", top_bit_cr
 ELIF PATCH_IDE
-       EQUS &0D, "Advanced DFS 1.53", &8D
+       EQUS &0D, "Advanced DFS 1.53", top_bit_cr
 ELSE
-       EQUS &0D, "Advanced DFS 1.50", &8D
+       EQUS &0D, "Advanced DFS 1.50", top_bit_cr
 ENDIF
        RTS
 .L9E0D TYA
@@ -4651,7 +4652,7 @@ ENDIF
        BCS L9E3E
        JSR L9DF6
        JSR print_inline_to_top_bit_set
-       EQUS "  ADFS", &8D
+       EQUS "  ADFS", top_bit_cr
 .service_help_exit
 {
 .L9E22 PLA
@@ -5368,7 +5369,7 @@ ENDIF
 .LA063 JSR LA1EA
        JSR LA206
        JSR print_inline_to_top_bit_set
-       EQUS "Free", &8D
+       EQUS "Free", top_bit_cr
        JSR LA1EA
        LDY #&01
        LDX #&02
@@ -5381,10 +5382,10 @@ ENDIF
        BPL LA079
        JSR LA206
        JSR print_inline_to_top_bit_set
-       EQUS "Used", &8D
+       EQUS "Used", top_bit_cr
 .LA091 RTS
 .LA092 JSR print_inline_to_top_bit_set
-       EQUS "Address :  Length", &8D
+       EQUS "Address :  Length", top_bit_cr
        LDX #&00
 .LA0A9 CPX &C1FE
        BEQ LA091
@@ -5418,7 +5419,7 @@ ENDIF
        CPX #&E1
        BCC LA091        ;; If FSM not filling up, exit
        JSR print_inline_to_top_bit_set        ;; Print message
-       EQUB "Compaction recommended", &8D
+       EQUB "Compaction recommended", top_bit_cr
 .RTS12
        RTS
 ;;
