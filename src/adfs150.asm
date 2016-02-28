@@ -5948,7 +5948,8 @@ ENDIF
        BCC chunk_55_rts
        INC &B5
 .chunk_55_rts
-;; (&B4) now points to the first character of the name.
+;; (&B4) now points to the first character of the name. (If this is being used
+;; via advance_b4_to_first_name_character, rather than chunk_55.)
        RTS
 }
 
