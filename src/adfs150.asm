@@ -1935,10 +1935,10 @@ ENDIF
        DEY
        BPL loop
 }
-       STX &C316        ;; Copy parameters to &C215
+       STX abs_workspace_current_directory_sector_num+2       ;; Copy parameters to &C215
        STX abs_workspace_control_block + cb_drive_sector_b16_20
        LDA &C22D
-       STA &C315
+       STA abs_workspace_current_directory_sector_num+1
        STA abs_workspace_control_block + cb_sector_b8_15
        LDA &C22C
        STA abs_workspace_current_directory_sector_num
@@ -5584,7 +5584,7 @@ ENDIF
        BNE LA1B9
        LDA #&FF
        STA abs_workspace_current_drive
-       STA &C316
+       STA abs_workspace_current_directory_sector_num+2
        LDX #&00
        JSR LA189
        BRA LA1B9
@@ -7160,8 +7160,8 @@ ENDIF
        CLC              ;; Clear EOF flag
        RTS              ;; Return
 ;;
-.LADD4 LDY #&02
-.LADD6 LDA &C314,Y
+.LADD4 LDY #sector_number_max_offset
+.LADD6 LDA abs_workspace_current_directory_sector_num,Y
        STA &C230,Y
        DEY
        BPL LADD6
@@ -7703,11 +7703,11 @@ ENDIF
        INY
        LDA (&B6),Y
        STA &C3F2,X
-       LDA &C314
+       LDA abs_workspace_current_directory_sector_num
        STA &C3E8,X
-       LDA &C315
+       LDA abs_workspace_current_directory_sector_num+1
        STA &C3DE,X
-       LDA &C316
+       LDA abs_workspace_current_directory_sector_num+2
        STA &C3D4,X
        STZ &C37A,X
        STZ &C370,X
