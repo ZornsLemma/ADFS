@@ -94,8 +94,8 @@ ELSE
         ORA #2
         STA iorb%
     NEXT
-ENDIF
     RTS
+ENDIF
 }
 
 ;; *** Send &FF to MMC Y times ***
@@ -462,8 +462,7 @@ IF _TURBOMMC
     BIT ifr%
     BEQ wait
 }
-    LDA #0                 ;; dummy write
-    STA sr%
+    STZ sr%		   ;; dummy write
     LDA #4
 {
 .wait
@@ -493,8 +492,7 @@ IF _TURBOMMC
     BIT ifr%
     BEQ wait
 }
-    LDA #0                 ;; dummy write
-    STA sr%
+    STZ sr%		   ;; dummy write
     LDA #4
 {
 .wait
