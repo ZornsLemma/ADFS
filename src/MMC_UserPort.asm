@@ -341,32 +341,24 @@ ENDIF
 ;; 22us/byte for &7000 bytes actually took 770ms.
 
 .WaitForShiftDone
-{
-    LDA #4            ;; Bit 2 of IFR is the Shift Reg Interrupt flag
     CPX #1            ;; test if the last byte
     BEQ lastByte      ;; so we can return to mode zero before reading it
+.WaitForShiftDoneNotLast
 .notLastByte
+    LDA #4            ;; Bit 2 of IFR is the Shift Reg Interrupt flag
+.notLastByteWait
     BIT ifr%          ;; wait for the SR interrupt flag to be set
-    BEQ notLastByte
+    BEQ notLastByteWait
     LDA sr%           ;; read the data byte, and clear the SR interrupt flag
     RTS
 .lastByte
+    LDA #4            ;; Bit 2 of IFR is the Shift Reg Interrupt flag
+.lastByteWait
     BIT ifr%          ;; wait for the SR interrupt flag to be set
-    BEQ lastByte
+    BEQ lastByteWait
     JSR ShiftRegMode0 ;; returning to mode 0 here avoids an addional byte read
     LDA sr%           ;; read the data byte, and clear the SR interrupt flag
     RTS
-}
-
-.WaitForShiftDoneNotLast
-{
-    LDA #4            ;; Bit 2 of IFR is the Shift Reg Interrupt flag
-.notLastByte
-    BIT ifr%          ;; wait for the SR interrupt flag to be set
-    BEQ notLastByte
-    LDA sr%           ;; read the data byte, and clear the SR interrupt flag
-    RTS
-}
         
 .ShiftRegMode0
     LDA acr%   ;; Set SR Mode to mode 0
