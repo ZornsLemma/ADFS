@@ -191,7 +191,6 @@ ENDIF
     JSR WaitForShiftDoneNotLast
     STA TUBE_R3_DATA
     JSR WaitForShiftDone   ;; Dummy read
-    INY
     DEX
     BNE MMC_ReadToTube
     RTS
