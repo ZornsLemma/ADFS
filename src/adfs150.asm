@@ -32,6 +32,8 @@ cb_length = 11 ;; 4 bytes
 
 default_retries = &10
 
+sector_number_max_offset = &02 ;; a sector is three bytes (0, 1, 2)
+
 ;; Zero page workspace
 
 zp_control_block_ptr = &B0 ;; 2 bytes
@@ -72,11 +74,20 @@ abs_workspace_control_block = &C215
 ;; TODO: What's the difference between abs_workspace_current_drive and
 ;; abs_workspace_current_drive2?
 abs_workspace_current_drive2 = &C26F
+abs_workspace_cmos_byte_copy = &C2D8
 abs_workspace_something = &C300
 abs_workspace_something_else = &C30A
 
 ;; init_context_ffffffff implies the 'context' lives at &C22C-&C237 inclusive
 ;; and &C314-&C31F inclusive. So these are part of the context:
+       ;; I *think* the way this works is abs_workspace_current_drive is
+       ;; the drive we actually work with during any operation (to allow for
+       ;; pathnames containing :<drive num>), but in order to preserve the
+       ;; currently selected drive when a pathname temporarily overrides it we
+       ;; saved the previous value of abs_workspace_current_drive in
+       ;; abs_workspace_saved_current_drive. This could be completely wrong.
+       abs_workspace_saved_current_drive = &C22F
+       abs_workspace_current_directory_sector_num = &C314 ;; 3 bytes
        abs_workspace_current_drive = &C317 ;; &FF=no current drive
        abs_workspace_library_drive = &C31B
 ;; I think &C22C-&C237 is the 'current context' and &C314-&C31F is the 'backup context'
@@ -1040,7 +1051,7 @@ ENDIF
 ;; is clear
 .generate_error_inline2
 {
-.L834E LDX &C22F
+.L834E LDX abs_workspace_saved_current_drive
        INX
        BNE generate_error_inline
        LDX &C22E
@@ -1048,7 +1059,7 @@ ENDIF
        BNE L8365
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L8365 LDA abs_workspace_current_drive
-       STA &C22F
+       STA abs_workspace_saved_current_drive
 }
 .generate_error_inline
 {
@@ -1532,16 +1543,22 @@ ENDIF
 .L872C LDX &B2
        JMP L8660
 ;;
+.inc_b4_b5_by_1
+{
 .L8731 INC &B4
        BNE L8737
        INC &B5
 .L8737 RTS
+}
 
 ;;
+.validate_pathname_at_first_name_character_zero_c2c0_classify_first_pathname_character
+{
 .L8738 JSR advance_b4_to_first_name_character
        JSR validate_pathname_at_b4
        LDY #&00
        STY &C2C0
+}
 ;; TODO: Possibly poor name but this has several effects and not sure which ones
 ;; are relied on by callers:
 ;; - it does LDA (&B4),Y:AND #&7F (Q: why the AND?)
@@ -1740,31 +1757,34 @@ ENDIF
 }
 
 ;;
-.L8870 JSR L8738
+.L8870 JSR validate_pathname_at_first_name_character_zero_c2c0_classify_first_pathname_character
        BEQ error_bad_name_indirect
-.L8875 JSR L8738
+.L8875 JSR validate_pathname_at_first_name_character_zero_c2c0_classify_first_pathname_character
+{
        BEQ L8899
-       CMP #&3A
+       CMP #':'
        BNE L88EF
-       JSR L8731
-       LDX &C22F
+       JSR inc_b4_b5_by_1
+       LDX abs_workspace_saved_current_drive
        INX
        BNE L888D
        LDA abs_workspace_current_drive
-       STA &C22F
+       STA abs_workspace_saved_current_drive
 .L888D JSR lda_and_classify_b4_y
        JSR drive_character_to_drive_num_top_3_bits
        STA abs_workspace_current_drive
-.L8896 JSR L8731
-.L8899 JSR chunk_52
-       BNE L88AD
+}
+.L8896 JSR inc_b4_b5_by_1
+.L8899 JSR set_z_iff_no_current_drive
+       BNE is_a_current_drive
 IF INCLUDE_FLOPPY
        JSR chunk_38
        BEQ L88AA        ;; Jump if no hard drive
 ENDIF
-       LDA &C2D8        ;; Get CMOS byte RAM copy
+       LDA abs_workspace_cmos_byte_copy        ;; Get CMOS byte RAM copy
        AND #&80         ;; Get hard drive flag
 .L88AA STA abs_workspace_current_drive        ;; Store in current drive
+.is_a_current_drive
 .L88AD LDA #as_fsm_inconsistent
        TSB zp_adfs_status_flag ;; Flag FSM inconsistant
        JSR scsi_op_load_fsm
@@ -1777,9 +1797,9 @@ ENDIF
        LDX #<control_block_load_root
        JSR scsi_op_using_control_block_yx ; Load '$'
        LDA #&02
-       STA &C314        ;; Set CURR to &000002 - '$'
-       STZ &C315
-       STZ &C316
+       STA abs_workspace_current_directory_sector_num ;; Set CURR to &000002 - '$'
+       STZ abs_workspace_current_directory_sector_num + 1
+       STZ abs_workspace_current_directory_sector_num + 2
        JSR LB4B9
        LDY #&00
        ;; TODO: Is the next line mostly redundant? Do we actually use the X=0
@@ -1787,7 +1807,7 @@ ENDIF
        JSR lda_and_classify_b4_y
        CMP #&2E
        BNE L8910
-       JSR L8731
+       JSR inc_b4_b5_by_1
 .L88EF LDY #&00
        JSR lda_and_classify_b4_y
        AND #&FD
@@ -1894,12 +1914,12 @@ ENDIF
 {
 .L89D8 
        PHA
-       LDA &C22F
+       LDA abs_workspace_saved_current_drive
        CMP #&FF
        BEQ L89EF
        STA abs_workspace_current_drive
        LDA #&FF
-       STA &C22F
+       STA abs_workspace_saved_current_drive
        JSR scsi_op_load_fsm
 .L89EF LDA &C22E
        CMP #&FF
@@ -1921,7 +1941,7 @@ ENDIF
        STA &C315
        STA abs_workspace_control_block + cb_sector_b8_15
        LDA &C22C
-       STA &C314
+       STA abs_workspace_current_directory_sector_num
        STA abs_workspace_control_block + cb_sector_b0_7
        LDA #&FF
        STA &C22E
@@ -2941,7 +2961,7 @@ ENDIF
        JSR chunk_30
        JSR ldy_3_lda_b6_y
        BPL L921B
-       LDX &C22F
+       LDX abs_workspace_saved_current_drive
        CPX #&FF
        BEQ L91A9
        CPX abs_workspace_current_drive
@@ -3306,7 +3326,7 @@ ENDIF
        jsr ldy_0_lda_b4_y
        CMP #&21
        BCS L9486
-       JSR chunk_52
+       JSR set_z_iff_no_current_drive
        BNE L9477
 .L9486 JSR L8875
        BNE L9499
@@ -3410,7 +3430,7 @@ ENDIF
 .L9546 JSR L9486
        LDY #&09
 .L954B JSR LA4EB
-       LDA &C22F
+       LDA abs_workspace_saved_current_drive
        CMP #&FF
        BNE L955E
        LDA abs_workspace_current_drive
@@ -3469,7 +3489,7 @@ ENDIF
 .L9600 LDA L84DC,X
        STA &C900,X
        STA &CDFA,X
-       LDA &C314,X
+       LDA &C314,X ;; TODO: &C314 is abs_workspace_current_directory_sector_num but that's 3 bytes and here we modify 5, so not changing this yet
        STA &CDD6,X
        DEX
        BPL L9600
@@ -3509,7 +3529,7 @@ ENDIF
        LDA (&B6),Y
 .RTS10
        RTS
-.L9649 LDA &C22F
+.L9649 LDA abs_workspace_saved_current_drive
        CMP abs_workspace_current_drive
        BEQ L9654
        INC A
@@ -3810,7 +3830,7 @@ ENDIF
        ;; We don't need this LDY #&00; it's intended for the following two STA
        ;; (zp) instructions which used to be STA (zp),Y. We exit this loop at
        ;; L98CE which does JSR L9486 which does JSR L8875
-       ;; which does JSR L8738 which does JSR advance_b4_to_first_name_character which does LDY #&00, so no
+       ;; which does JSR validate_pathname_at_first_name_character_zero_c2c0_classify_first_pathname_character which does JSR advance_b4_to_first_name_character which does LDY #&00, so no
        ;; following code relies on our assignment to Y.
        ;; LDY #&00
        LDA &B6
@@ -3821,8 +3841,8 @@ ENDIF
        STA &B5
        STA (&C0)
        INC &C0
-       LDX #&02
-.L9908 LDA &C314,X
+       LDX #sector_number_max_offset
+.L9908 LDA abs_workspace_current_directory_sector_num,X
        STA &C252,X
        DEX
        BPL L9908
@@ -4314,7 +4334,7 @@ IF PATCH_SD
        JSR initializeDriveTable
 ENDIF
        JSR L9A7F        ;; Get ADFS CMOS byte
-       STA &C2D8        ;; Store in workspace
+       STA abs_workspace_cmos_byte_copy        ;; Store in workspace
        LDY #&0D         ;; Initialise vectors
 .L9BA9 LDA L9CB6,Y
        STA &0212,Y
@@ -4372,7 +4392,7 @@ ENDIF
 .L9C18 LDY #&03         ;; Copy current context to backup context
        JSR lda_c314_y_sta_c22c_y_dey_bpl
        JSR get_fsm_and_root_from_0_if_context_not_minus_1        ;; Get FSM and root from :0 if context<>-1
-       JSR chunk_52
+       JSR set_z_iff_no_current_drive
        BEQ L9C7D        ;; No drive (eg *fadfs), jump ahead
        JSR LB4CD
 IF PATCH_IDE OR PATCH_SD
@@ -4430,7 +4450,7 @@ ENDIF
 .L9C8B PLA              ;; Get boot flag
        PHA
        BNE L9CA8        ;; No boot, jump forward
-       JSR chunk_52
+       JSR set_z_iff_no_current_drive
        BNE L9C9B
        STX abs_workspace_current_drive2
        JSR LA1A1
@@ -4945,11 +4965,11 @@ ENDIF
 
 .chunk_3
        STA &C21A
-       LDA &C314
+       LDA abs_workspace_current_directory_sector_num
        STA &C21D
-       LDA &C315
+       LDA abs_workspace_current_directory_sector_num+1
        STA &C21C
-       LDA &C316
+       LDA abs_workspace_current_directory_sector_num+2
        STA &C21B
        RTS
 
@@ -4978,7 +4998,7 @@ ENDIF
 .chunk_10
        LDA #&FF
        STA &C22E
-       STA &C22F
+       STA abs_workspace_saved_current_drive
        RTS
 
 .chunk_12
@@ -5048,7 +5068,7 @@ ENDIF
        RTS
 
 .chunk_22
-       LDA &C22F
+       LDA abs_workspace_saved_current_drive
        STA abs_workspace_current_drive
        RTS
 
@@ -5187,7 +5207,7 @@ ENDIF
        BPL chunk_51_sta_c23a_y_dey_bpl
        RTS
 
-.chunk_52
+.set_z_iff_no_current_drive
        LDX abs_workspace_current_drive        ;; Get current drive
        INX              ;; If &FF, no directory loaded
        RTS
@@ -5196,13 +5216,13 @@ ENDIF
        JSR chunk_8
        BNE chunk_53_rts
        LDA &C3E8,X
-       CMP &C314
+       CMP abs_workspace_current_directory_sector_num
        BNE chunk_53_rts
        LDA &C3DE,X
-       CMP &C315
+       CMP abs_workspace_current_directory_sector_num+1
        BNE chunk_53_rts
        LDA &C3D4,X
-       CMP &C316
+       CMP abs_workspace_current_directory_sector_num+2
        BNE chunk_53_rts
        LDY #&19
        LDA (&B6),Y
@@ -5295,9 +5315,9 @@ ENDIF
        RTS
 
 .ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
-       LDY #&02
+       LDY #sector_number_max_offset
 .lda_c314_y_sta_c22c_y_dey_bpl
-       LDA &C314,Y
+       LDA abs_workspace_current_directory_sector_num,Y
        JSR sta_c22c_y_dey
        BPL lda_c314_y_sta_c22c_y_dey_bpl
        RTS
@@ -6221,7 +6241,7 @@ ENDIF
 ;; Check loaded directory
 ;; ----------------------
 .check_loaded_directory
-.LA6FD JSR chunk_52
+.LA6FD JSR set_z_iff_no_current_drive
        BNE LA72E        ;; Directory loaded, exit
        JSR generate_error_inline3        ;; Generate error
        EQUB &A9         ;; ERR=169
@@ -6482,7 +6502,7 @@ ENDIF
 ;;
 ;; FSC 6 - New FS taking over
 ;; ==========================
-.LA96D JSR chunk_52
+.LA96D JSR set_z_iff_no_current_drive
        BEQ LA983
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
        LDA #&FF         ;; Continue into OSARGS &FF,0
@@ -7150,7 +7170,7 @@ ENDIF
        LDX &CF
        LDA &C3B6,X
        AND #&E0
-       STA &C22F
+       STA abs_workspace_saved_current_drive
        LDA &C3E8,X
        STA &C22C
        LDA &C3DE,X
@@ -7161,7 +7181,7 @@ ENDIF
        LDY #&02
 .LAE06 JSR chunk_32
        LDA &C233
-       STA &C22F
+       STA abs_workspace_saved_current_drive
        JSR LB4DF
        LDX &CF
        LDA &C3CA,X
@@ -7203,7 +7223,7 @@ ENDIF
        BCS LAE38
 .LAE68
        STZ &C2B5
-.LAE6D LDA &C22F
+.LAE6D LDA abs_workspace_saved_current_drive
        STA &C2BF
        LDX #&02
 .LAE75 LDA &C22C,X
@@ -7456,7 +7476,7 @@ ENDIF
        STA &C334,X
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
 .LB0DA LDA &C2BF
-       STA &C22F
+       STA abs_workspace_saved_current_drive
        LDX #&02
 .LB0E2 LDA &C2BC,X
        STA &C22C,X
@@ -7964,10 +7984,10 @@ ENDIF
        PHA
        LDA abs_workspace_current_drive
        STA &C2CD
-       LDY &C22F
+       LDY abs_workspace_saved_current_drive
        CPY #&FF
        BNE LB59C
-       STA &C22F
+       STA abs_workspace_saved_current_drive
        STY &C2CD
 .LB59C STX abs_workspace_current_drive
        JSR LB546
@@ -7976,7 +7996,7 @@ ENDIF
        CPY #&FF
        BNE LB5B5
        JSR chunk_22
-       STY &C22F
+       STY abs_workspace_saved_current_drive
 .LB5B5 PLA
        CMP abs_workspace_current_drive
        BEQ LB5C2
