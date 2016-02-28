@@ -1539,7 +1539,7 @@ ENDIF
 
 ;;
 .L8738 JSR advance_b4_to_first_name_character
-       JSR L8D79
+       JSR validate_pathname_at_b4
        LDY #&00
        STY &C2C0
 ;; TODO: Possibly poor name but this has several effects and not sure which ones
@@ -2402,8 +2402,11 @@ ENDIF
        INX
        RTS
 ;;
-.L8D79 
+;; Check a pathname at (&B4) to ensure it's well-formed, generating a bad name
+;; error if it isn't.
+.validate_pathname_at_b4
 {
+.L8D79 
        LDY #&00
        JSR lda_and_classify_b4_y
        BNE not_special_character
@@ -2427,9 +2430,7 @@ ENDIF
 .L8D98 AND #&FD
        CMP #&24			    ;; is it '$' or '&'?
        BEQ seen_root
-}
 .directory_loop
-{
 .L8D9E JSR lda_and_classify_b4_y_error_bad_name_on_special
        CMP #'^'
        BEQ is_parent
@@ -2439,23 +2440,29 @@ ENDIF
 .L8DA9 INY
        JSR lda_and_classify_b4_y
        BNE error_bad_name_indirect2
+.seen_special
 .L8DAF CMP #'.'
        BNE L8DE0_rts
        INY
        BRA directory_loop
 ;;
 .not_at
+.filename_verify_loop
 .L8DB6 JSR lda_and_classify_b4_y
-       BEQ L8DAF
-       LDX #&05
-.L8DBD CMP L8DF8,X
+       BEQ seen_special
+       LDX #restricted_character_list_last_byte_offset
+.check_restricted_character_list
+.L8DBD CMP restricted_character_list,X
        BEQ error_bad_name_indirect2
        DEX
-       BPL L8DBD
+       BPL check_restricted_character_list
        INY
-       BNE L8DB6
+       BNE filename_verify_loop
+       ;; I think the idea is that the previous BNE will always occur, since any
+       ;; possible pathname can't be >256 bytes.
 }
-.L8DC8 JSR L8D79
+
+.L8DC8 JSR validate_pathname_at_b4
 .L8DCB 
        JSR lda_b4_y_and_7f
        CMP #&2A
@@ -2484,7 +2491,11 @@ ENDIF
        EQUS "Wild cards"
        EQUB &00
 ;;
+.restricted_character_list
+{
 .L8DF8 EQUS &7F, "^@:$&"
+}
+restricted_character_list_last_byte_offset = &05
 ;;
 .L8DFE JSR L8CF4
 .L8E01 BNE check_dir_full_error
