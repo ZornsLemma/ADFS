@@ -3005,9 +3005,9 @@ ENDIF
 ;;
 .print_argument_table_entry
 .L9283 TAX
-       LDA #>L9FB1
+       LDA #>argument_string_table
        STA &B7
-       LDA L9E95,X
+       LDA argument_string_index_table,X
        STA &B6
        LDX #&0C
 ;;
@@ -4730,6 +4730,8 @@ ENDIF
        BRA loop
 }
 ;;
+.argument_string_index_table
+{
 .L9E95 EQUB <L9FFB
        EQUB <L9FB1
        EQUB <L9FBD
@@ -4738,6 +4740,7 @@ ENDIF
        EQUB <L9FDD
        EQUB <L9FE7
        EQUB <L9FF4
+}
 ;;
 ;;
 ;; FSC - Filing System Control
