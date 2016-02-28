@@ -69,12 +69,16 @@ abs_workspace_free_space_map = &C000
 ;; loading/storing to abs_workspace_default_retries.
 abs_workspace_default_retries = &C200
 abs_workspace_control_block = &C215
+;; TODO: What's the difference between abs_workspace_current_drive and
+;; abs_workspace_current_drive2?
+abs_workspace_current_drive2 = &C26F
 abs_workspace_something = &C300
 abs_workspace_something_else = &C30A
 
 ;; init_context_ffffffff implies the 'context' lives at &C22C-&C237 inclusive
 ;; and &C314-&C31F inclusive. So these are part of the context:
        abs_workspace_current_drive = &C317 ;; &FF=no current drive
+       abs_workspace_library_drive = &C31B
 ;; I think &C22C-&C237 is the 'current context' and &C314-&C31F is the 'backup context'
 
 abs_workspace_adfs_status_flag = &C320
@@ -1540,11 +1544,11 @@ ENDIF
        STY &C2C0
 .L8743 
        JSR lda_b4_y_and_7f
-       CMP #&2E
+       CMP #'.'
        BEQ L8753
-       CMP #&22
+       CMP #'"'
        BEQ L8753
-       CMP #&20
+       CMP #' '
        BCS L8755
 .L8753 LDX #&00
 .L8755 RTS
@@ -1593,7 +1597,7 @@ ENDIF
 .L87AA RTS
 ;;
 .L87AB JSR L8743
-       BNE L8760
+       BNE error_bad_name
 .L87B0 JSR L8743
        CMP #&23
        BEQ L87CE
@@ -1690,15 +1694,17 @@ ENDIF
        EQUB &00
 ;;
 ;; Check drive character
-.L8847 CMP #&30
-       BCC L886D        ;; <'0' - error
-       CMP #&38
+.drive_character_to_drive_num_top_3_bits
+{
+.L8847 CMP #'0'
+       BCC error_bad_name_indirect        ;; <'0' - error
+       CMP #'8'
        BCC L885A        ;; '0'-'7' - Ok
        ORA #&20         ;; For to lower case
-       CMP #&61         ;; <'A' - error
-       BCC L886D
-       CMP #&69
-       BCS L886D        ;; >'H' - error
+       CMP #'a'         ;; <'A' - error
+       BCC error_bad_name_indirect
+       CMP #'i'
+       BCS error_bad_name_indirect        ;; >'H' - error
        DEC A            ;; Convert 'A'-'H' to '0' to '7'
 .L885A PHA
 IF INCLUDE_FLOPPY
@@ -1715,12 +1721,16 @@ ENDIF
        ROR A
        ROR A
        RTS
+}
 ;;
-.L886D JMP L8760
+.error_bad_name_indirect
+{
+.L886D JMP error_bad_name
+}
 
 ;;
 .L8870 JSR L8738
-       BEQ L886D
+       BEQ error_bad_name_indirect
 .L8875 JSR L8738
        BEQ L8899
        CMP #&3A
@@ -1732,7 +1742,7 @@ ENDIF
        LDA abs_workspace_current_drive
        STA &C22F
 .L888D JSR L8743
-       JSR L8847
+       JSR drive_character_to_drive_num_top_3_bits
        STA abs_workspace_current_drive
 .L8896 JSR L8731
 .L8899 JSR chunk_52
@@ -2437,7 +2447,7 @@ ENDIF
 ;;
 .L8DE1 JSR L8743
        BNE L8DE0
-.L8DE6 JMP L8760
+.L8DE6 JMP error_bad_name
 ;;
 .L8DE9 JSR generate_error_inline
        EQUB &Fd         ;; ERR=194
@@ -2907,7 +2917,7 @@ ENDIF
        EQUB &00
 ;;
 .L91CB LDA abs_workspace_current_drive
-       CMP &C31B
+       CMP abs_workspace_library_drive
        BNE L91F9
        LDX #&02
 .L91D5 LDA &C234,X
@@ -3473,7 +3483,7 @@ ENDIF
 .L9663 LDA &C2A8,Y
        jsr sta_c22c_y_dey
        BPL L9663
-.L966C LDA &C31B
+.L966C LDA abs_workspace_library_drive
        CMP abs_workspace_current_drive
        BNE L968C
        LDY #&02
@@ -4325,7 +4335,7 @@ ENDIF
        BEQ L9C7D        ;; No drive (eg *fadfs), jump ahead
        JSR LB4CD
 IF PATCH_IDE OR PATCH_SD
-       LDA &C31B        ;; Lib not unset, jump ahead
+       LDA abs_workspace_library_drive        ;; Lib not unset, jump ahead
        INC A
        BNE L9C7A
        JSR chunk_38     ;; If HD, look for $.Library
@@ -4339,7 +4349,7 @@ ELSE
        BNE L9C7A
        LDA &C319
        ORA &C31A
-       ORA &C31B
+       ORA abs_workspace_library_drive
 ENDIF
        BNE L9C7A        ;; No, don't look for Library
 .L9C41 LDA #<L9CAE
@@ -4362,7 +4372,7 @@ ENDIF
        DEX
        BPL L9C5F
        LDA abs_workspace_current_drive
-       STA &C31B
+       STA abs_workspace_library_drive
        LDY #&09
 .L9C70 JSR chunk_40
        STA &C30A,Y
@@ -4381,7 +4391,7 @@ ENDIF
        BNE L9CA8        ;; No boot, jump forward
        JSR chunk_52
        BNE L9C9B
-       STX &C26F
+       STX abs_workspace_current_drive2
        JSR LA1A1
 .L9C9B LDY &C1FD        ;; Get boot option
        BEQ L9CA8        ;; Zero, jump to finish
@@ -5469,26 +5479,36 @@ ELSE
        EQUB &00
 ENDIF
 ;;
-.LA135 JSR advance_b4_to_first_name_character
+;; Parse a command argument at &B4 into a drive number in the top 3 bits of
+;; abs_workspace_current_drive2, defaulting to the current drive or 0 if there is no drive if the
+;; argument is empty.
+.process_drive_argument_default_to_current_or_0
+{
+.LA135 
+       JSR advance_b4_to_first_name_character
        LDY abs_workspace_current_drive
        INY
-       BEQ LA13F
+       BEQ no_current_drive_so_use_0
        DEY
-.LA13F STY &C26F
+.no_current_drive_so_use_0
+.LA13F 
+       STY abs_workspace_current_drive2
        jsr ldy_0_lda_b4_y
-       CMP #&20
-       BCC LA150
-       JSR L8847
-       STA &C26F        ;; Set drive number
+       CMP #' '
+       BCC rts
+       JSR drive_character_to_drive_num_top_3_bits
+       STA abs_workspace_current_drive2        ;; Set drive number
+.rts
 .LA150 RTS
+}
 ;;
-.LA151 JSR LA135
+.LA151 JSR process_drive_argument_default_to_current_or_0
        LDX #&09
 .LA156 LDA &C3AC,X
        BEQ LA16F
        LDA &C3B6,X
        AND #&E0
-       CMP &C26F
+       CMP abs_workspace_current_drive2
        BNE LA16F
        CLC
        TXA
@@ -5499,7 +5519,7 @@ ENDIF
 .LA16F DEX
        BPL LA156
        LDA abs_workspace_current_drive
-       CMP &C26F
+       CMP abs_workspace_current_drive2
        BNE LA1B9
        LDA #&FF
        STA abs_workspace_current_drive
@@ -5522,8 +5542,8 @@ ENDIF
 ;; *MOUNT
 ;; ======
 .mount_core
-.LA19E JSR LA135        ;; Scan drive number parameter
-.LA1A1 LDA &C26F        ;; Get drive
+.LA19E JSR process_drive_argument_default_to_current_or_0        ;; Scan drive number parameter
+.LA1A1 LDA abs_workspace_current_drive2        ;; Get drive
        STA abs_workspace_current_drive        ;; Set current drive
 IF NOT(PATCH_SD)
        LDX #<control_block_park
@@ -5536,17 +5556,17 @@ ENDIF
        STA &B5          ;; Point to LA2EA
        JSR L9546        ;; Do something
 .LA1B9 LDA &C31F        ;; Get previous drive
-       CMP &C26F        ;; Compare with ???
+       CMP abs_workspace_current_drive2        ;; Compare with ???
        BNE LA1C9        ;; If different, jump past
        LDA #&FF
        STA &C31E        ;; Set previous directory to &FFFFxxxx
        STA &C31F
-.LA1C9 LDA &C31B        ;; Get library drive
-       CMP &C26F        ;; Compare with ???
+.LA1C9 LDA abs_workspace_library_drive        ;; Get library drive
+       CMP abs_workspace_current_drive2        ;; Compare with ???
        BNE RTS1         ;; If different, jump past
        LDA #&FF
        STA &C31A        ;; Set library to &FFFFxxxx
-       STA &C31B
+       STA abs_workspace_library_drive
        LDX #&0A
        BRA LA189        ;; Set library name to "Unset"
 ;;
@@ -6336,7 +6356,7 @@ ENDIF
        JSR LA394
        JSR L8743
        BNE LA89B
-       JMP L8760
+       JMP error_bad_name
 ;;
 .LA89B JSR L9486
        JSR L8FF3
@@ -6400,7 +6420,7 @@ ENDIF
        STA &C261
        LDA #as_something
        TSB zp_adfs_status_flag
-       LDA &C26F
+       LDA abs_workspace_current_drive2
        ORA &C2A4
        STA &C2A4
        LDA &C273
@@ -8320,7 +8340,7 @@ ENDIF
        JMP LB8A5
 ;;
 .LB94F JSR chunk_47
-       LDA &C31B
+       LDA abs_workspace_library_drive
        JSR LB946
        LDA #<abs_workspace_something_else
        JSR chunk_67
