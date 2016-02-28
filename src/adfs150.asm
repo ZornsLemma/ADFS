@@ -1542,6 +1542,15 @@ ENDIF
        JSR L8D79
        LDY #&00
        STY &C2C0
+;; TODO: Possibly poor name but this has several effects and not sure which ones
+;; are relied on by callers:
+;; - it does LDA (&B4),Y:AND #&7F (Q: why the AND?)
+;; - it sets X=0 if the A value obtained is '.', '"' or a control character
+;;   (X is left alone otherwise)
+;; - it returns with Z set if the A value obtained is '.', '"', ' ' or a
+;;   control character, Z clear otherwise
+.lda_and_classify_b4_y
+{
 .L8743 
        JSR lda_b4_y_and_7f
        CMP #'.'
@@ -1549,12 +1558,14 @@ ENDIF
        CMP #'"'
        BEQ L8753
        CMP #' '
-       BCS L8755
+       BCS rts
 .L8753 LDX #&00
+.rts
 .L8755 RTS
+}
 ;;
 .L8756 LDY #&0A
-.L8758 JSR L8743
+.L8758 JSR lda_and_classify_b4_y
        BEQ L876D
        DEY
        BPL L8758
@@ -1581,7 +1592,7 @@ ENDIF
        STA &C22B
        CPY #&0A
        BCS L87AB
-       JSR L8743
+       JSR lda_and_classify_b4_y
        BEQ L87B0
        CMP #&2A
        BEQ L87D1
@@ -1596,9 +1607,9 @@ ENDIF
        BNE L877C
 .L87AA RTS
 ;;
-.L87AB JSR L8743
+.L87AB JSR lda_and_classify_b4_y
        BNE error_bad_name
-.L87B0 JSR L8743
+.L87B0 JSR lda_and_classify_b4_y
        CMP #&23
        BEQ L87CE
        CMP #&2A
@@ -1610,7 +1621,7 @@ ENDIF
 ;;
 .L87C1 CPY #&0A
        BEQ L87AA
-       JSR L8743
+       JSR lda_and_classify_b4_y
        BEQ L87AA
        CMP #&2A
        BEQ L87D1
@@ -1741,7 +1752,7 @@ ENDIF
        BNE L888D
        LDA abs_workspace_current_drive
        STA &C22F
-.L888D JSR L8743
+.L888D JSR lda_and_classify_b4_y
        JSR drive_character_to_drive_num_top_3_bits
        STA abs_workspace_current_drive
 .L8896 JSR L8731
@@ -1771,12 +1782,14 @@ ENDIF
        STZ &C316
        JSR LB4B9
        LDY #&00
-       JSR L8743
+       ;; TODO: Is the next line mostly redundant? Do we actually use the X=0
+       ;; result? If not, we could probably replace this with LDA (&B4),Y
+       JSR lda_and_classify_b4_y
        CMP #&2E
        BNE L8910
        JSR L8731
 .L88EF LDY #&00
-       JSR L8743
+       JSR lda_and_classify_b4_y
        AND #&FD
        CMP #&24
        BEQ L8896
@@ -1785,7 +1798,7 @@ ENDIF
        BNE L892A
        INY
        STY &C2A2
-       JSR L8743
+       JSR lda_and_classify_b4_y
        CMP #&2E
        BNE RTS4
 .L8997 LDA &C2A2
@@ -1834,7 +1847,7 @@ ENDIF
        BNE RTS4
 ;;
 .L893F LDY #&00
-.L8941 JSR L8743
+.L8941 JSR lda_and_classify_b4_y
        CMP #&21
        BCC L8930
        CMP #&22
@@ -2389,48 +2402,59 @@ ENDIF
        INX
        RTS
 ;;
-.L8D79 LDY #&00
-       JSR L8743
-       BNE L8D85
-       CMP #&2E
-       BEQ L8DE6
+.L8D79 
+{
+       LDY #&00
+       JSR lda_and_classify_b4_y
+       BNE not_special_character
+       CMP #'.'
+       BEQ error_bad_name_indirect2
        RTS
 ;;
-.L8D85 CMP #&3A
-       BNE L8D98
+.not_special_character
+.L8D85 CMP #':'
+       BNE not_colon
        INY
+.seen_root
 .L8D8A INY
-       JSR L8743
-       BNE L8DE6
-       CMP #&2E
-       BNE L8DE0
+       JSR lda_and_classify_b4_y
+       BNE error_bad_name_indirect2 ;; after :n we must have a special character
+       CMP #'.'
+       BNE L8DE0_rts
        INY
-       JSR L8DE1
+       JSR lda_and_classify_b4_y_error_bad_name_on_special
+.not_colon
 .L8D98 AND #&FD
-       CMP #&24
-       BEQ L8D8A
-.L8D9E JSR L8DE1
-       CMP #&5E
-       BEQ L8DA9
-       CMP #&40
-       BNE L8DB6
+       CMP #&24			    ;; is it '$' or '&'?
+       BEQ seen_root
+}
+.directory_loop
+{
+.L8D9E JSR lda_and_classify_b4_y_error_bad_name_on_special
+       CMP #'^'
+       BEQ is_parent
+       CMP #'@'
+       BNE not_at ;; TODO: what does '@' signify? current directory??
+.is_parent
 .L8DA9 INY
-       JSR L8743
-       BNE L8DE6
-.L8DAF CMP #&2E
-       BNE L8DE0
+       JSR lda_and_classify_b4_y
+       BNE error_bad_name_indirect2
+.L8DAF CMP #'.'
+       BNE L8DE0_rts
        INY
-       BRA L8D9E
+       BRA directory_loop
 ;;
-.L8DB6 JSR L8743
+.not_at
+.L8DB6 JSR lda_and_classify_b4_y
        BEQ L8DAF
        LDX #&05
 .L8DBD CMP L8DF8,X
-       BEQ L8DE6
+       BEQ error_bad_name_indirect2
        DEX
        BPL L8DBD
        INY
        BNE L8DB6
+}
 .L8DC8 JSR L8D79
 .L8DCB 
        JSR lda_b4_y_and_7f
@@ -2439,15 +2463,21 @@ ENDIF
        CMP #&23
        BEQ L8DE9
        CMP #&2E
-       BEQ L8DE0
+       BEQ L8DE0_rts
        DEY
        CPY #&FF
        BNE L8DCB
-.L8DE0 RTS
+.L8DE0_rts RTS
 ;;
-.L8DE1 JSR L8743
-       BNE L8DE0
+.lda_and_classify_b4_y_error_bad_name_on_special
+{
+.L8DE1 JSR lda_and_classify_b4_y
+       BNE L8DE0_rts
+}
+.error_bad_name_indirect2
+{
 .L8DE6 JMP error_bad_name
+}
 ;;
 .L8DE9 JSR generate_error_inline
        EQUB &Fd         ;; ERR=194
@@ -5550,10 +5580,12 @@ IF NOT(PATCH_SD)
        LDY #>control_block_park
        JSR scsi_access  ;; Do SCSI command &1B - Park
 ENDIF
-       LDA #<(LA2EB-1)
+;; Set up a dummy "command line" consisting of just a zero byte for further
+;; processing to see.
+       LDA #<zero_byte
        STA &B4
-       LDA #>(LA2EB-1)
-       STA &B5          ;; Point to LA2EA
+       LDA #>zero_byte
+       STA &B5          
        JSR L9546        ;; Do something
 .LA1B9 LDA &C31F        ;; Get previous drive
        CMP abs_workspace_current_drive2        ;; Compare with ???
@@ -5676,6 +5708,7 @@ ENDIF
 .LA2DB JSR generate_error_inline
        EQUB &94         ;; ERR=148
        EQUS "Bad compact"
+.zero_byte
        EQUB &00
 ;;
 .LA2EB STA &C215
@@ -5918,7 +5951,7 @@ ENDIF
        RTS
 ;;
 .LA4F5 LDY #&00
-.LA4F7 JSR L8743
+.LA4F7 JSR lda_and_classify_b4_y
        BEQ LA4FF
 .LA4FC INY
        BNE LA4F7
@@ -6006,7 +6039,7 @@ ENDIF
        AND #&7D
        CMP #&24
        BEQ LA53E
-.LA570 JSR L8743
+.LA570 JSR lda_and_classify_b4_y
        BEQ LA57C
        CMP #&5E
        BEQ LA53E
@@ -6354,7 +6387,7 @@ ENDIF
        LDY #&03
        JSR lda_c314_y_sta_c22c_y_dey_bpl
        JSR LA394
-       JSR L8743
+       JSR lda_and_classify_b4_y
        BNE LA89B
        JMP error_bad_name
 ;;
