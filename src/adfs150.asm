@@ -539,11 +539,7 @@ ELIF PATCH_IDE
        BNE TransDone
        BIT zp_adfs_status_flag
        BVS TransTube
-       BCC IORead
-.IOWrite
-       LDA (&80),Y
-       STA &FC40
-       BRA TransferByte
+       BCS IOWrite
 .IORead
        LDA &FC40
        STA (&80),Y
@@ -552,8 +548,7 @@ ELIF PATCH_IDE
        BCC TubeRead
 .TubeWrite
        LDA &FEE5        ;; Get byte from Tube
-       STA &FC40        ;; Write byte to SCSI data port
-       BRA TransferByte
+       BRA IOWrite_sta_fc40
 .TubeRead
        LDA &FC40        ;; Get byte from SCSI data port
        STA &FEE5        ;; Write to Tube
@@ -568,6 +563,11 @@ ELIF PATCH_IDE
        LDY zp_control_block_ptr+1
        AND #&7F
        RTS
+.IOWrite
+       LDA (&80),Y
+.IOWrite_sta_fc40
+       STA &FC40        ;; Write byte to SCSI data port
+       BRA TransferByte
 .TransferByte
        INY              ;; Loop for 256 bytes
        BNE TransferLoop
