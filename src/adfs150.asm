@@ -69,6 +69,8 @@ abs_workspace_free_space_map = &C000
 ;; way for it to be anything other than default_retries. If that's right, we
 ;; could save a few bytes by doing LDA #default_retries instead of
 ;; loading/storing to abs_workspace_default_retries.
+;; TODO: Moreover, in SD card builds where we never retry at all, we could
+;; conditionally compile out all the code related to this.
 abs_workspace_default_retries = &C200
 abs_workspace_control_block = &C215
 ;; TODO: What's the difference between abs_workspace_current_drive and
