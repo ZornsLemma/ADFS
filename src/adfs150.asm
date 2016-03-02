@@ -4777,20 +4777,22 @@ ENDIF
        LDY #max_command_name_length
 .command_name_loop
        LDA command_table,X
-       BMI at_command_address
+       BMI at_argument_type_byte
        JSR print_a
        INX
        DEY
        BPL command_name_loop
-.at_command_address
+.at_argument_type_byte
+       PHX
+       TAX
 ;; Output spaces to pad all commands to same length
 .space_loop
        JSR print_space
        DEY
        BPL space_loop
-       PHX
        ;; Get argument type byte
-       LDA command_table+2,X
+       TXA
+       AND #&7F
        PHA
        JSR lsr_a_4
        JSR print_argument_table_entry
@@ -4910,35 +4912,35 @@ ENDIF
        CLC
        JSR chunk_55
        JSR advance_b4_to_first_name_character        ;; Skip spaces, etc.
-.L9F24 JMP (L9F2D,X)    ;; Get command address and jump to it
+.L9F24 JMP (L9F2D+1,X)    ;; Get command address and jump to it
 ;;
 .command_table
 ;; Each entry has the form:
-;; EQUS "command":EQUW handler_address:EQUB (arg1type)<<4+arg2type
+;; EQUS "command":EQUB top_bit+(arg1type)<<4+arg2type:EQUW handler_address
 ;; where arg1type/arg2type are suitable for passing to print_argument_table_entry
 ;;
-.L9F2D EQUS "ACCESS", <L9942, >L9942, &16
-       EQUS "BACK", <LA4D5, >LA4D5, &00
-       EQUS "BYE", <bye, >bye, &00
-       EQUS "CDIR", <L9577, >L9577, &20
-       EQUS "COMPACT", <LA2B6, >LA2B6, &50
-       EQUS "COPY", <LA849, >LA849, &13
-       EQUS "DESTROY", <L99E9, >L99E9, &10
-       EQUS "DIR", <L9546, >L9546, &20
-       EQUS "DISMOUNT", <LA151, >LA151, &40
-       EQUS "FREE", <LA063, >LA063, &00
-       EQUS "LCAT", <LA4BD, >LA4BD, &00
-       EQUS "LEX", <LA4C9, >LA4C9, &00
-       EQUS "LIB", <LA482, >LA482, &30
-       EQUS "MAP", <LA092, >LA092, &00
+.L9F2D EQUS "ACCESS", top_bit+&16, <L9942, >L9942
+       EQUS "BACK", top_bit+&00, <LA4D5, >LA4D5
+       EQUS "BYE", top_bit+&00, <bye, >bye
+       EQUS "CDIR", top_bit+&20, <L9577, >L9577
+       EQUS "COMPACT", top_bit+&50, <LA2B6, >LA2B6
+       EQUS "COPY", top_bit+&13, <LA849, >LA849
+       EQUS "DESTROY", top_bit+&10, <L99E9, >L99E9
+       EQUS "DIR", top_bit+&20, <L9546, >L9546
+       EQUS "DISMOUNT", top_bit+&40, <LA151, >LA151
+       EQUS "FREE", top_bit+&00, <LA063, >LA063
+       EQUS "LCAT", top_bit+&00, <LA4BD, >LA4BD
+       EQUS "LEX", top_bit+&00, <LA4C9, >LA4C9
+       EQUS "LIB", top_bit+&30, <LA482, >LA482
+       EQUS "MAP", top_bit+&00, <LA092, >LA092
 IF PATCH_IDE OR PATCH_SD
-       EQUS "MOUNT", <MountCheck, >MountCheck, &40
+       EQUS "MOUNT", top_bit+&40, <MountCheck, >MountCheck
 ELSE
-       EQUS "MOUNT", <mount_core, >mount_core, &40
+       EQUS "MOUNT", top_bit+&40, <mount_core, >mount_core
 ENDIF
-       EQUS "RENAME", <LA541, >LA541, &22
-       EQUS "TITLE", <LA292, >LA292, &70
-       EQUS >LA3DB, >LA3DB
+       EQUS "RENAME", top_bit+&22, <LA541, >LA541
+       EQUS "TITLE", top_bit+&70, <LA292, >LA292
+       EQUS top_bit, <LA3DB, >LA3DB
 
 .chunk_1
        LDA &00,X
