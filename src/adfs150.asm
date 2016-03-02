@@ -3418,8 +3418,7 @@ ENDIF
        AND #&03
        CMP #&01
        BNE L953D
-       JSR print_space        ;; Print a space
-       JSR print_space        ;; Print a space
+       JSR print_two_spaces
        TXA
        CLC
        ADC #&05
@@ -4772,8 +4771,7 @@ ENDIF
 .loop
 .L9E5C LDA command_table,X
        BMI service_help_exit
-       JSR print_inline_to_top_bit_set
-       EQUB ' ', ' '+top_bit
+       JSR print_two_spaces
        LDY #max_command_name_length
 .command_name_loop
        LDA command_table,X
@@ -5412,6 +5410,8 @@ ENDIF
        EQUS "Bad opt"
        EQUB &00
 ;;
+.print_two_spaces
+       JSR print_space
 .print_space
 .LA036 LDA #&20
        BRA print_a
