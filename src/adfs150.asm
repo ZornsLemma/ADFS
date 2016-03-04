@@ -92,6 +92,7 @@ abs_workspace_something_else = &C30A
        abs_workspace_current_directory_sector_num = &C314 ;; 3 bytes
        abs_workspace_current_drive = &C317 ;; &FF=no current drive
        abs_workspace_library_drive = &C31B
+       abs_workspace_previous_drive = &C31F ;; &FF=no previous drive
 ;; I think &C22C-&C237 is the 'current context' and &C314-&C31F is the 'backup context'
 
 abs_workspace_adfs_status_flag = &C320
@@ -2995,7 +2996,7 @@ ENDIF
        EQUB &00
 ;;
 .L91F9 LDA abs_workspace_current_drive
-       CMP &C31F
+       CMP abs_workspace_previous_drive
        BNE L921B
        LDX #&02
 .L9203 LDA &C234,X
@@ -3436,7 +3437,7 @@ ENDIF
        CMP #&FF
        BNE L955E
        LDA abs_workspace_current_drive
-.L955E STA &C31F
+.L955E STA abs_workspace_previous_drive
        LDY #&02
 .L9563 LDA &C22C,Y
        STA &C31C,Y
@@ -3560,7 +3561,7 @@ ENDIF
        STA &C318,Y
        DEY
        BPL L9683
-.L968C LDA &C31F
+.L968C LDA abs_workspace_previous_drive
        CMP abs_workspace_current_drive
        BNE L96AC
        LDY #&02
@@ -5594,6 +5595,12 @@ ENDIF
        JSR LA189
        BRA LA1B9
 ;;
+;; TODO: Copies the 8 bytes at LA196 (in reverse order) *plus* the preceding RTS
+;; (&60) and the offset of the preceding BPL (not checked value) to &C300,X 
+;; onwards. I think, looking at the callers, this will either be used to 
+;; update abs_workspace_something (&C300) or abs_workspace_something_else 
+;; (&C30A) depending on our X on entry (init_context_ffffffff calls this twice 
+;; with X=0 to start with, so presumably updates both of those)
 .LA189 LDY #&09
 .LA18B LDA LA196-2,Y
        STA &C300,X
@@ -5623,12 +5630,14 @@ ENDIF
        LDA #>zero_byte
        STA &B5          
        JSR L9546        ;; Do something
-.LA1B9 LDA &C31F        ;; Get previous drive
+.LA1B9 LDA abs_workspace_previous_drive        ;; Get previous drive
+{
        CMP abs_workspace_current_drive2        ;; Compare with ???
-       BNE LA1C9        ;; If different, jump past
+       BNE drive_different ;; If different, jump past
        LDA #&FF
        STA &C31E        ;; Set previous directory to &FFFFxxxx
-       STA &C31F
+       STA abs_workspace_previous_drive
+.drive_different
 .LA1C9 LDA abs_workspace_library_drive        ;; Get library drive
        CMP abs_workspace_current_drive2        ;; Compare with ???
        BNE RTS1         ;; If different, jump past
@@ -5637,6 +5646,7 @@ ENDIF
        STA abs_workspace_library_drive
        LDX #&0A
        BRA LA189        ;; Set library name to "Unset"
+}
 ;;
 .LA1EA
        LDX #&03
