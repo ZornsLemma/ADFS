@@ -64,7 +64,9 @@ as_files_being_ensured = &01
 ;; Workspace allocation
 ;; Shared workspace in Hazel starts at &C000. We claim up to &CE00-1.
 abs_workspace_top = &CE
-abs_workspace_free_space_map = &C000
+abs_workspace_fsm = &C000 ; 512 bytes (2 sectors)
+       abs_workspace_fsm_s0_checksum = &C0FF
+       abs_workspace_fsm_s1_checksum = &C1FF
 ;; TODO: I am not sure abs_workspace_default_retries is needed; I don't see any
 ;; way for it to be anything other than default_retries. If that's right, we
 ;; could save a few bytes by doing LDA #default_retries instead of
@@ -124,6 +126,7 @@ osword_read_system_clock = 1
 acccon = &FE34
 acccon_d = &01 ;; D bit - 0 = use shadow RAM for screen, 1 = use main RAM for screen
 acccon_x = &04 ;; X bit - 0 = normal RAM in main memory, 1 = shadow RAM in main memory
+sys_via_t1_low_order_counter = &FE44
 
 scsi_command_read = &08
 scsi_command_write = &0A
@@ -1729,7 +1732,7 @@ ENDIF
 ;; Control block to load FSM
 .control_block_load_fsm
 .L8831 EQUB &01
-       EQUW abs_workspace_free_space_map ;; load here
+       EQUW abs_workspace_fsm ;; load here
        EQUW &FFFF		         ;; in I/O processor
        EQUB scsi_command_read
        EQUB &00,&00,&00		         ;; load from sector 0
@@ -2737,14 +2740,14 @@ restricted_character_list_last_byte_offset = &05
        JSR ldx_abs_workspace_current_drive_div_16
        LDA &C1FC
        STA &C322,X
-       LDA &FE44        ;; System VIA Latch Lo
+       LDA sys_via_t1_low_order_counter ;; System VIA Latch Lo
        STA &C321,X
        STA &C1FB
-       JSR L9065        ;; Calculate FSM checksums
-       STX &C0FF        ;; Store sector 0 checksum
-       STA &C1FF        ;; Store sector 1 checksum
-       LDX #<L907A     ;; Point to control block
-       LDY #>L907A
+       JSR calculate_fsm_checksum ;; Calculate FSM checksums
+       STX abs_workspace_fsm_s0_checksum ;; Store sector 0 checksum
+       STA abs_workspace_fsm_s1_checksum ;; Store sector 1 checksum
+       LDX #<control_block_save_fsm ;; Point to control block
+       LDY #>control_block_save_fsm
        JSR scsi_op_using_control_block_yx ;; Save FSM
        LDA #as_fsm_inconsistent
        TRB zp_adfs_status_flag ;; Flag FSM loaded
@@ -2766,10 +2769,10 @@ IF PATCH_IDE
 ELSE
 .L8FF3 JSR L9012        ;; Check for overlapping FSM entries
 ENDIF
-       JSR L9065        ;; Add up
-       CMP &C1FF        ;; Does sector 1 sum match?
+       JSR calculate_fsm_checksum ;; Add up
+       CMP abs_workspace_fsm_s1_checksum ;; Does sector 1 sum match?
        BNE L9003        ;; No, jump to give error
-       CPX &C0FF        ;; Does sector 0 sum match?
+       CPX abs_workspace_fsm_s0_checksum ;; Does sector 0 sum match?
        BEQ L8FF2        ;; Yes, exit
 .L9003 JSR generate_error_inline2        ;; Generate error
        EQUB &A9         ;; ERR=169
@@ -2825,32 +2828,37 @@ ENDIF
        BCC L9035        ;; Loop for all entries
        RTS
 ;;
-;; Add up FSM
+;; Add up FSM, returning sum of sector 0 in X and sector 1 in Y
 ;; ----------
+.calculate_fsm_checksum
+{
 .L9065 CLC              ;; Clear carry
        LDY #&FF         ;; Point to &xxFE
        TYA              ;; Initialise A with -1
-.L9069 ADC &BFFF,Y      ;; Add sector 0 bytes &FE to &00
+.L9069 ADC abs_workspace_fsm-1,Y      ;; Add sector 0 bytes &FE to &00
        DEY
        BNE L9069        ;; Loop for all bytes
        TAX              ;; Save result in X
        DEY              ;; Reset Y to &FF again
        TYA              ;; Initialise A with -1
        CLC              ;; Clear carry
-.L9073 ADC &C0FF,Y      ;; Add sector 1 bytes from &FE to &00
+.L9073 ADC abs_workspace_fsm+256-1,Y      ;; Add sector 1 bytes from &FE to &00
        DEY
        BNE L9073        ;; Loop for all bytes
        RTS
+}
 ;;
 ;; Control block to save FSM
 .control_block_save_fsm
+{
 .L907A EQUB &01
-       EQUW abs_workspace_free_space_map ;; save here
+       EQUW abs_workspace_fsm ;; save here
        EQUW &FFFF		         ;; in I/O processor
        EQUB scsi_command_write
        EQUB &00,&00,&00		         ;; save to sector 0
        EQUB &02    		         ;; save 2 sectors
        EQUB &00
+}
 ;;
 ;; OSFILE &01-&03 - Write Info
 ;; ===========================
