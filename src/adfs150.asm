@@ -133,9 +133,12 @@ abs_workspace_current_directory_s3 = &C700
 abs_workspace_current_directory_s4 = &C800
 abs_workspace_park = &C900
 
-;; A directory consists of 5 sectors containing 47 26-byte entries, then some
+;; A directory consists of 5 sectors, containing a 5 byte header, 47 26-byte entries, then some
 ;; information in the last few bytes of the last sector.
+dir_master_sequence_offset = 0
+dir_hugo_offset = 1
 dir_entry_size = 26 ;; &1A
+;; 
 
 ;; ADFS Error Information:
 abs_workspace_error = &C2D0
@@ -1619,7 +1622,8 @@ ENDIF
 }
 ;; TODO: Possibly poor name but this has several effects and not sure which ones
 ;; are relied on by callers:
-;; - it does LDA (&B4),Y:AND #&7F (Q: why the AND?)
+;; - it does LDA (&B4),Y:AND #&7F (AND #&7F to strip top bit as names stored in
+;;   directories use top bit for access bits)
 ;; - it sets X=0 if the A value obtained is '.', '"' or a control character
 ;;   (X is left alone otherwise)
 ;; - it returns with Z set if the A value obtained is '.', '"', ' ' or a
@@ -1639,11 +1643,16 @@ ENDIF
 .L8755 RTS
 }
 ;;
+;; TODO: This superficially appears to determine the length of a filename at
+;; (&B4), but I'm not too happy with this. If I am sort of right,
+;; it jumps to L876D with Y containing the length of the filename.
 .L8756 LDY #&0A
+{
 .L8758 JSR lda_and_classify_b4_y
        BEQ L876D
        DEY
        BPL L8758
+}
 ;;
 .error_bad_name
 {
@@ -1654,13 +1663,16 @@ ENDIF
 }
 ;;
 .L876D LDY #&09
-.L876F JSR chunk_40
+{
+.L876F JSR get_stripped_filename_character_zp_dir_ptr_y
        STA &C262,Y
        DEY
        BPL L876F
+}
        INY
        LDX #&00
 .L877C CPX #&0A
+{
        BCS L87C1
        LDA &C262,X
        CMP #&21
@@ -1682,6 +1694,7 @@ ENDIF
 .L87A6 INX
        INY
        BNE L877C
+}
 .L87AA RTS
 ;;
 .L87AB JSR lda_and_classify_b4_y
@@ -3171,7 +3184,7 @@ ENDIF
        LDX #&0C
 ;;
 .L928F LDY #&00
-.L9291 JSR chunk_40
+.L9291 JSR get_stripped_filename_character_zp_dir_ptr_y
        CMP #&20
        BCC L92A1
        JSR L92CB
@@ -3977,7 +3990,7 @@ ENDIF
        JMP error_file_not_found_or_bad_name ;; Jump to 'Not found'/'Bad name'
 ;;
 .L994A LDY #&02         ;; Clear existing LWR bits
-.L994C JSR chunk_40
+.L994C JSR get_stripped_filename_character_zp_dir_ptr_y
        STA (zp_dir_ptr),Y
        DEY
        BPL L994C
@@ -4532,7 +4545,7 @@ ENDIF
        LDA abs_workspace_current_drive
        STA abs_workspace_library_drive
        LDY #&09
-.L9C70 JSR chunk_40
+.L9C70 JSR get_stripped_filename_character_zp_dir_ptr_y
        STA &C30A,Y
        DEY
        BPL L9C70
@@ -5257,7 +5270,7 @@ ENDIF
        AND #as_hard_drive_present ;; Hard drive present?
        RTS
 
-.chunk_40
+.get_stripped_filename_character_zp_dir_ptr_y
        LDA (zp_dir_ptr),Y
        AND #&7F
        RTS
@@ -5376,11 +5389,11 @@ ENDIF
        LDY #&03
        RTS
 
-.chunk_40_sta_c274_y_dey_bpl
-       JSR chunk_40
+.get_stripped_filename_character_zp_dir_ptr_y_sta_c274_y_dey_bpl
+       JSR get_stripped_filename_character_zp_dir_ptr_y
        STA &C274,Y
        DEY
-       BPL chunk_40_sta_c274_y_dey_bpl
+       BPL get_stripped_filename_character_zp_dir_ptr_y_sta_c274_y_dey_bpl
        RTS
 
 .advance_zp_dir_ptr_low_by_dir_entry_size
@@ -6267,7 +6280,7 @@ ENDIF
        LDY #&02
        JSR chunk_62
        LDY #&09
-       JSR chunk_40_sta_c274_y_dey_bpl
+       JSR get_stripped_filename_character_zp_dir_ptr_y_sta_c274_y_dey_bpl
        LDA #&74
        STA &B4
        LDA #&C2
@@ -6575,7 +6588,7 @@ ENDIF
        DEY
        BPL LA8EE
        LDY #&09
-       JSR chunk_40_sta_c274_y_dey_bpl
+       JSR get_stripped_filename_character_zp_dir_ptr_y_sta_c274_y_dey_bpl
        LDA #&0D
        STA &C27E
        JSR LA821
