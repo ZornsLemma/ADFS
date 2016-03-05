@@ -7959,7 +7959,7 @@ ENDIF
        LDA &C1FC
        CMP &C322,X
        BNE LB4FF
-       JSR LB560
+       JSR and_c2c2_with_7_bits_based_on_x_div_2
        STA &C2C2
        RTS
 ;;
@@ -8006,12 +8006,19 @@ ENDIF
 ;;
 .LB546 JSR set_c2c2_to_ff_if_slow
        JSR chunk_12
-       JSR LB560
+       JSR and_c2c2_with_7_bits_based_on_x_div_2
        EOR &C2C2
        BEQ LB545
        JSR scsi_op_load_fsm
        BRA LB4E2
 ;;
+;; TODO: Not quite sure what this is doing, but can see we're basically shifting
+;; a 9-bit pattern of all 1s except for a single 0 bit around based on X/2,
+;; which we then AND with &C2C2. (Not strictly always 7 bits, as eventually the
+;; zero bit will be back in the carry and A will be &FF at the AND stage. But I
+;; hope this name is temporary anyway.)
+.and_c2c2_with_7_bits_based_on_x_div_2
+{
 .LB560 LDA #&FF
        CLC
 .LB563 ROL A
@@ -8020,6 +8027,7 @@ ENDIF
        BPL LB563
        AND &C2C2
        RTS
+}
 ;;
 .LB56C AND #&E0
        STA &C2CD
@@ -8028,7 +8036,7 @@ ENDIF
        JSR set_c2c2_to_ff_if_slow
        LDA &C2CD
        JSR LB5C5
-       JSR LB560
+       JSR and_c2c2_with_7_bits_based_on_x_div_2
        EOR &C2C2
        BEQ LB5C2
        LDA &C2CD
