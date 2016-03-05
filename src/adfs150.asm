@@ -1104,7 +1104,7 @@ ENDIF
 .L834E LDX abs_workspace_saved_current_drive
        INX
        BNE generate_error_inline
-       LDX &C22E
+       LDX abs_workspace_current_directory2_sector_num+2
        INX
        BNE L8365
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
@@ -1840,7 +1840,7 @@ ENDIF
        JSR scsi_op_load_fsm
        LDA #as_fsm_inconsistent
        TRB zp_adfs_status_flag ;; Flag FSM loaded
-       LDA &C22E
+       LDA abs_workspace_current_directory2_sector_num+2
        BPL L88CC
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .L88CC LDY #>control_block_load_root
@@ -1876,7 +1876,7 @@ ENDIF
 .L8997 LDA abs_workspace_some_other_sector_num
        SEC
        JSR chunk_55
-       LDA &C22E
+       LDA abs_workspace_current_directory2_sector_num+2
        INC A
        JSR chunk_17
        JSR scsi_op_using_abs_workspace_control_block
@@ -1973,7 +1973,7 @@ ENDIF
        LDA #&FF
        STA abs_workspace_saved_current_drive
        JSR scsi_op_load_fsm
-.L89EF LDA &C22E
+.L89EF LDA abs_workspace_current_directory2_sector_num+2
        CMP #&FF
        BEQ L8A22
        TAX
@@ -1989,14 +1989,14 @@ ENDIF
 }
        STX abs_workspace_current_directory_sector_num+2       ;; Copy parameters to &C215
        STX abs_workspace_control_block + cb_drive_sector_b16_20
-       LDA &C22D
+       LDA abs_workspace_current_directory2_sector_num+1
        STA abs_workspace_current_directory_sector_num+1
        STA abs_workspace_control_block + cb_sector_b8_15
        LDA abs_workspace_current_directory2_sector_num
        STA abs_workspace_current_directory_sector_num
        STA abs_workspace_control_block + cb_sector_b0_7
        LDA #&FF
-       STA &C22E
+       STA abs_workspace_current_directory2_sector_num+2
        JSR scsi_op_using_abs_workspace_control_block
 .L8A22 LDA zp_adfs_status_flag
        STA abs_workspace_adfs_status_flag
@@ -2988,11 +2988,13 @@ ENDIF
        JSR chunk_9
 
 .L9127 JSR L8CD4
-       BEQ L9131
+       BEQ check_for_dir_not_empty
        LDA #&00
        JMP get_fsm_and_root_from_0_if_context_not_minus_1
 
 ;;
+.check_for_dir_not_empty
+{
 .L9131 JSR L8D1B
        JSR ldy_3_lda_b6_y
        BPL check_for_cant_delete_csd
@@ -3013,6 +3015,7 @@ ENDIF
        EQUB &B4         ;; ERR=180
        EQUS "Dir not empty"
        EQUB &00
+}
 ;;
 .check_for_cant_delete_csd
 {
@@ -3408,7 +3411,7 @@ ENDIF
 ;;
 .L9499 JSR update_b6_to_point_to_something_based_on_b4_y_and_tya
        BNE L9496
-.L949E LDY &C22E
+.L949E LDY abs_workspace_current_directory2_sector_num+2
        INY
        JSR chunk_17
        LDA &B7
@@ -4058,7 +4061,7 @@ ENDIF
 ;;
 .L9A36 JSR L8FE8
        BNE L9A47
-       JSR L9131
+       JSR check_for_dir_not_empty
        PLA
        STA &B5
        PLA
@@ -4483,9 +4486,9 @@ ELSE
        ORA abs_workspace_library_drive
 ENDIF
        BNE L9C7A        ;; No, don't look for Library
-.L9C41 LDA #<L9CAE
+.L9C41 LDA #<drive_0_lib_wildcard_path
        STA &B4
-       LDA #>L9CAE
+       LDA #>drive_0_lib_wildcard_path
        STA &B5          ;; Point to ":0.LIB*"
        JSR L8FE8
        BNE L9C7A
@@ -4534,7 +4537,10 @@ ENDIF
        LDA #&00         ;; Claim the call
        RTS
 ;;
+.drive_0_lib_wildcard_path
+{
 .L9CAE EQUS ":0.LIB*", &0D
+}
 ;;
 ;;
 ;; Vector Table
@@ -5068,7 +5074,7 @@ ENDIF
 
 .chunk_10
        LDA #&FF
-       STA &C22E
+       STA abs_workspace_current_directory2_sector_num+2
        STA abs_workspace_saved_current_drive
        RTS
 
@@ -6177,7 +6183,7 @@ ENDIF
        LDA &C313,Y
        DEY
        BPL LA59C
-.LA5A5 LDA &C22E
+.LA5A5 LDA abs_workspace_current_directory2_sector_num+2
        BPL LA5B5
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .LA5B5 JSR get_fsm_and_root_from_0_if_context_not_minus_1
@@ -7259,9 +7265,9 @@ ENDIF
        LDA &C3E8,X
        STA abs_workspace_current_directory2_sector_num
        LDA &C3DE,X
-       STA &C22D
+       STA abs_workspace_current_directory2_sector_num+1
        LDA &C3D4,X
-       STA &C22E
+       STA abs_workspace_current_directory2_sector_num+2
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
        LDY #&02
 .LAE06 JSR chunk_32
