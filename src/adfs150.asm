@@ -66,6 +66,7 @@ as_files_being_ensured = &01
 abs_workspace_top = &CE
 abs_workspace_fsm = &C000 ; 512 bytes (2 sectors)
        abs_workspace_fsm_s0_checksum = &C0FF
+       abs_workspace_fsm_disc_id = &C1FB ;; 2 bytes
        abs_workspace_fsm_s1_checksum = &C1FF
 ;; TODO: I am not sure abs_workspace_default_retries is needed; I don't see any
 ;; way for it to be anything other than default_retries. If that's right, we
@@ -2738,11 +2739,11 @@ restricted_character_list_last_byte_offset = &05
 
        JSR scsi_op_using_abs_workspace_control_block
        JSR ldx_abs_workspace_current_drive_div_16
-       LDA &C1FC
+       LDA abs_workspace_fsm_disc_id+1
        STA &C322,X
        LDA sys_via_t1_low_order_counter ;; System VIA Latch Lo
        STA &C321,X
-       STA &C1FB
+       STA abs_workspace_fsm_disc_id
        JSR calculate_fsm_checksum ;; Calculate FSM checksums
        STX abs_workspace_fsm_s0_checksum ;; Store sector 0 checksum
        STA abs_workspace_fsm_s1_checksum ;; Store sector 1 checksum
@@ -7956,17 +7957,17 @@ ENDIF
        BPL LB4BB
 ;;
 .LB4CD JSR ldx_abs_workspace_current_drive_div_16
-       LDA &C1FB
+       LDA abs_workspace_fsm_disc_id
        STA &C321,X
-       LDA &C1FC
+       LDA abs_workspace_fsm_disc_id+1
        STA &C322,X
 .LB4DF JSR set_disc_changed_flag_to_ff_periodically
 .LB4E2 JSR ldx_abs_workspace_current_drive_div_16
 {
-       LDA &C1FB
+       LDA abs_workspace_fsm_disc_id
        CMP &C321,X
        BNE error_disc_changed
-       LDA &C1FC
+       LDA abs_workspace_fsm_disc_id+1
        CMP &C322,X
        BNE error_disc_changed
        ;; Disc not changed, record that we've verified this so we don't
