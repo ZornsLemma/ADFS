@@ -3018,11 +3018,11 @@ ENDIF
        CPX #&FF
        BEQ L91A9
        CPX abs_workspace_current_drive
-       BNE L91CB
+       BNE check_for_cant_delete_library
 .L91A9 LDX #&02
 .L91AB LDA abs_workspace_another_sector_num,X
        CMP &C22C,X
-       BNE L91CB
+       BNE check_for_cant_delete_library
        DEX
        BPL L91AB
        JSR generate_error_inline
@@ -3030,6 +3030,8 @@ ENDIF
        EQUS "Can't delete CSD"
        EQUB &00
 ;;
+.check_for_cant_delete_library
+{
 .L91CB LDA abs_workspace_current_drive
        CMP abs_workspace_library_drive
        BNE L91F9
@@ -3043,6 +3045,7 @@ ENDIF
        EQUB &97         ;; ERR=151
        EQUS "Can't delete Library"
        EQUB &00
+}
 ;;
 .L91F9 LDA abs_workspace_current_drive
        CMP abs_workspace_previous_drive
