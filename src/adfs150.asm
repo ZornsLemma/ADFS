@@ -92,6 +92,7 @@ abs_workspace_something_else = &C30A
        abs_workspace_current_directory_sector_num = &C314 ;; 3 bytes
        abs_workspace_current_drive = &C317 ;; &FF=no current drive
        abs_workspace_library_drive = &C31B
+       abs_workspace_previous_directory = &C31C ;; 3 bytes (sector number); &C31E (high byte)=&FF->no previous directory
        abs_workspace_previous_drive = &C31F ;; &FF=no previous drive
 ;; I think &C22C-&C237 is the 'current context' and &C314-&C31F is the 'backup context'
 
@@ -1236,8 +1237,8 @@ ENDIF
        STA &C313,X
        DEX
        BNE L849E
-       JSR LA189
-       JSR LA189
+       JSR set_unset_c300_x
+       JSR set_unset_c300_x
        LDY #&00
        TYA		;; TODO: We might be able to get rid of this and use STZ
                         ;; it depends if our callers rely on A=0
@@ -3000,14 +3001,14 @@ ENDIF
        BNE L921B
        LDX #&02
 .L9203 LDA &C234,X
-       CMP &C31C,X
+       CMP abs_workspace_previous_directory,X
        BNE L921B
        DEX
        BPL L9203
        LDA #&02
-       STA &C31C
-       STZ &C31D
-       STZ &C31E
+       STA abs_workspace_previous_directory
+       STZ abs_workspace_previous_directory+1
+       STZ abs_workspace_previous_directory+2
 .L921B JSR chunk_26
        BMI L9224
        JSR L8C70
@@ -3440,7 +3441,7 @@ ENDIF
 .L955E STA abs_workspace_previous_drive
        LDY #&02
 .L9563 LDA &C22C,Y
-       STA &C31C,Y
+       STA abs_workspace_previous_directory,Y
        DEY
        BPL L9563
        JSR chunk_10
@@ -3566,13 +3567,13 @@ ENDIF
        BNE L96AC
        LDY #&02
 .L9696 LDA &C2A2,Y
-       CMP &C31C,Y
+       CMP abs_workspace_previous_directory,Y
        BNE L96AC
        DEY
        BPL L9696
        LDY #&02
 .L96A3 LDA &C2A8,Y
-       STA &C31C,Y
+       STA abs_workspace_previous_directory,Y
        DEY
        BPL L96A3
 .L96AC LDA zp_adfs_status_flag
@@ -5592,7 +5593,7 @@ ENDIF
        STA abs_workspace_current_drive
        STA abs_workspace_current_directory_sector_num+2
        LDX #&00
-       JSR LA189
+       JSR set_unset_c300_x
        BRA LA1B9
 ;;
 ;; TODO: Copies the 8 bytes at LA196 (in reverse order) *plus* the preceding RTS
@@ -5601,12 +5602,15 @@ ENDIF
 ;; update abs_workspace_something (&C300) or abs_workspace_something_else 
 ;; (&C30A) depending on our X on entry (init_context_ffffffff calls this twice 
 ;; with X=0 to start with, so presumably updates both of those)
+.set_unset_c300_x
+{
 .LA189 LDY #&09
 .LA18B LDA LA196-2,Y
        STA &C300,X
        INX
        DEY
        BPL LA18B
+}
 .RTS1
        RTS
 ;;
@@ -5635,7 +5639,7 @@ ENDIF
        CMP abs_workspace_current_drive2        ;; Compare with ???
        BNE drive_different ;; If different, jump past
        LDA #&FF
-       STA &C31E        ;; Set previous directory to &FFFFxxxx
+       STA abs_workspace_previous_directory+2 ;; Set previous directory to &FFFFxxxx
        STA abs_workspace_previous_drive
 .drive_different
 .LA1C9 LDA abs_workspace_library_drive        ;; Get library drive
@@ -5645,7 +5649,7 @@ ENDIF
        STA &C31A        ;; Set library to &FFFFxxxx
        STA abs_workspace_library_drive
        LDX #&0A
-       BRA LA189        ;; Set library name to "Unset"
+       BRA set_unset_c300_x        ;; Set library name to "Unset"
 }
 ;;
 .LA1EA
@@ -5981,10 +5985,10 @@ ENDIF
        BMI LA49B
 ;;
 .LA4D5 LDY #&03
-.LA4D7 LDA &C31C,Y
+.LA4D7 LDA abs_workspace_previous_directory,Y ;; note abs_workspace_previous_directory+3==abs_workspace_previous_drive
        STA &C22C,Y
        LDA &C314,Y
-       STA &C31C,Y
+       STA abs_workspace_previous_directory,Y
        DEY
        BPL LA4D7
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
