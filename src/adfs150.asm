@@ -1853,7 +1853,7 @@ ENDIF
        AND #&FD
        CMP #&24		       
        BEQ L8896	       ;; branch if (&B4) is '$' or '&'
-       JSR LB546
+       JSR check_current_drive_for_disc_change
 .L88FD JSR L9456
        BNE L892A
        INY
@@ -5443,7 +5443,7 @@ ENDIF
 .LA016 CPX #&03
        BNE LA02A
        JSR L8FF3
-       JSR LB546
+       JSR check_current_drive_for_disc_change
        LDA &B5
        AND #&03
        STA &C1FD
@@ -5764,7 +5764,7 @@ ENDIF
        JSR print_inline_to_top_bit_set
        EQUS " Bytes",&A0
        RTS
-.LA292 JSR LB546
+.LA292 JSR check_current_drive_for_disc_change
        JSR L8FF3
        JSR advance_b4_to_first_name_character
        LDY #&00
@@ -8029,6 +8029,8 @@ ENDIF
 }
 .LB545 RTS
 ;;
+.check_current_drive_for_disc_change
+{
 .LB546 JSR set_disc_changed_flag_to_ff_periodically
        ;; Since abs_workspace_current_drive has drive number in top 3 bits,
        ;; div 16 then div 2 gets the drive number down into the range 0-7, so
@@ -8041,6 +8043,7 @@ ENDIF
 	         ; if not, re-load free space map and check for disc changed
        JSR scsi_op_load_fsm
        BRA LB4E2
+}
 ;;
 ;; TODO: Not quite sure what this is doing, but can see we're basically shifting
 ;; a 9-bit pattern of all 1s except for a single 0 bit around based on X/2,
@@ -8080,7 +8083,7 @@ ENDIF
        STA abs_workspace_saved_current_drive
        STY &C2CD
 .LB59C STX abs_workspace_current_drive
-       JSR LB546
+       JSR check_current_drive_for_disc_change
        LDY &C2CD
        STY abs_workspace_current_drive
        CPY #&FF
