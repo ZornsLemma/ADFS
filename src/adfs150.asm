@@ -7951,7 +7951,7 @@ ENDIF
        STA &C321,X
        LDA &C1FC
        STA &C322,X
-.LB4DF JSR update_time_and_delta
+.LB4DF JSR set_c2c2_to_ff_if_slow
 .LB4E2 JSR chunk_12
        LDA &C1FB
        CMP &C321,X
@@ -7968,11 +7968,11 @@ ENDIF
        EQUS "Disc changed"
        EQUB &00
 
+.set_c2c2_to_ff_if_slow
+{
 ;; now = TIME
 ;; abs_workspace_time_delta = now - abs_workspace_time
 ;; abs_workspace_time = now
-.update_time_and_delta
-{
 .LB510 LDA #osword_read_system_clock
        LDX #<abs_workspace_time_delta
        LDY #>abs_workspace_time_delta
@@ -7989,6 +7989,10 @@ ENDIF
        INX
        DEY
        BPL LB51E
+       ;; Y=&FF
+
+       ;; If delta is < &200 centiseconds (5.12 seconds), just RTS, otherwise
+       ;; store Y=&FF at &C2C2
        LDA abs_workspace_time_delta+4
        ORA abs_workspace_time_delta+3
        ORA abs_workspace_time_delta+2
@@ -8000,7 +8004,7 @@ ENDIF
 }
 .LB545 RTS
 ;;
-.LB546 JSR update_time_and_delta
+.LB546 JSR set_c2c2_to_ff_if_slow
        JSR chunk_12
        JSR LB560
        EOR &C2C2
@@ -8021,7 +8025,7 @@ ENDIF
        STA &C2CD
        PHX
        PHY
-       JSR update_time_and_delta
+       JSR set_c2c2_to_ff_if_slow
        LDA &C2CD
        JSR LB5C5
        JSR LB560
