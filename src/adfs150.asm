@@ -7977,7 +7977,8 @@ ENDIF
        CMP abs_workspace_drive_disc_ids+1,X
        BNE error_disc_changed
        ;; Disc not changed, record that we've verified this so we don't
-       ;; check again for at least 5.12 seconds.
+       ;; check again until the next interval tracked by set_disc_changed_flag...
+       ;; occurs
        JSR lda_disc_changed_flag_with_bit_x_div_2_cleared
        STA abs_workspace_disc_changed_flag
        RTS
