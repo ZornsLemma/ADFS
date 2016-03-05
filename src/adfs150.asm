@@ -103,6 +103,9 @@ abs_workspace_something_else = &C30A
        abs_workspace_previous_directory = &C31C ;; 3 bytes (sector number); &C31E (high byte)=&FF->no previous directory
        abs_workspace_previous_drive = &C31F ;; &FF=no previous drive
 ;; I think &C22C-&C237 is the 'current context' and &C314-&C31F is the 'backup context'
+context_size = &C
+abs_workspace_current_context = &C22C ;; 12 bytes (&C22C-&C237)
+abs_workspace_backup_context = &C314 ;; 12 bytes (&C314-&C31F)
 
 abs_workspace_adfs_status_flag = &C320
 abs_workspace_drive_disc_ids = &C321 ;; 16 bytes
@@ -1261,10 +1264,10 @@ ENDIF
 .init_context_ffffffff
 {
 .L849A 
-       LDX #&0C
+       LDX #context_size
        LDA #&FF
-.L849E STA &C22B,X
-       STA &C313,X
+.L849E STA abs_workspace_current_context-1,X
+       STA abs_workspace_backup_context-1,X
        DEX
        BNE L849E
        JSR set_unset_c300_x
@@ -1272,8 +1275,8 @@ ENDIF
        LDY #&00
        TYA		;; TODO: We might be able to get rid of this and use STZ
                         ;; it depends if our callers rely on A=0
-.L84B0 STA &C100,Y
-       STA &C000,Y
+.L84B0 STA abs_workspace_fsm+256,Y
+       STA abs_workspace_fsm,Y
        STA abs_workspace_current_directory,Y
        INY
        BNE L84B0
