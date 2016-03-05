@@ -105,6 +105,12 @@ abs_workspace_something_else = &C30A
 ;; I think &C22C-&C237 is the 'current context' and &C314-&C31F is the 'backup context'
 
 abs_workspace_adfs_status_flag = &C320
+abs_workspace_drive_disc_ids = &C321 ;; 16 bytes
+       ;; 2 bytes containing disc ID for drive 0
+       ;; 2 bytes containing disc ID for drive 1
+       ;; ...
+       ;; 2 bytes containing disc ID for drive 7
+
 abs_workspace_current_directory = &C400
 abs_workspace_park = &C900
 
@@ -2740,9 +2746,9 @@ restricted_character_list_last_byte_offset = &05
        JSR scsi_op_using_abs_workspace_control_block
        JSR ldx_abs_workspace_current_drive_div_16
        LDA abs_workspace_fsm_disc_id+1
-       STA &C322,X
+       STA abs_workspace_drive_disc_ids+1,X
        LDA sys_via_t1_low_order_counter ;; System VIA Latch Lo
-       STA &C321,X
+       STA abs_workspace_drive_disc_ids,X
        STA abs_workspace_fsm_disc_id
        JSR calculate_fsm_checksum ;; Calculate FSM checksums
        STX abs_workspace_fsm_s0_checksum ;; Store sector 0 checksum
@@ -7958,17 +7964,17 @@ ENDIF
 ;;
 .LB4CD JSR ldx_abs_workspace_current_drive_div_16
        LDA abs_workspace_fsm_disc_id
-       STA &C321,X
+       STA abs_workspace_drive_disc_ids,X
        LDA abs_workspace_fsm_disc_id+1
-       STA &C322,X
+       STA abs_workspace_drive_disc_ids+1,X
 .LB4DF JSR set_disc_changed_flag_to_ff_periodically
 .LB4E2 JSR ldx_abs_workspace_current_drive_div_16
 {
        LDA abs_workspace_fsm_disc_id
-       CMP &C321,X
+       CMP abs_workspace_drive_disc_ids,X
        BNE error_disc_changed
        LDA abs_workspace_fsm_disc_id+1
-       CMP &C322,X
+       CMP abs_workspace_drive_disc_ids+1,X
        BNE error_disc_changed
        ;; Disc not changed, record that we've verified this so we don't
        ;; check again for at least 5.12 seconds.
