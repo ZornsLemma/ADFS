@@ -79,6 +79,7 @@ abs_workspace_control_block = &C215
 ;; TODO: What's the difference between abs_workspace_current_drive and
 ;; abs_workspace_current_drive2?
 abs_workspace_current_drive2 = &C26F
+abs_workspace_some_other_sector_num = &C2A2 ;; 3 bytes
 abs_workspace_disc_changed_flag = &C2C2 ;; bit 0=drive 0 etc, set=maybe changed, clear=checked and not changed
 abs_workspace_time = &C2C3 ;; 5 bytes
 abs_workspace_time_delta = &C2C8 ;; 5 bytes
@@ -97,6 +98,7 @@ abs_workspace_something_else = &C30A
        ;; abs_workspace_saved_current_drive. This could be completely wrong.
        abs_workspace_saved_current_drive = &C22F
        abs_workspace_some_sector_num = &C231 ;; 3 bytes
+       abs_workspace_another_sector_num = &C234 ;; 3 bytes
        abs_workspace_current_directory_sector_num = &C314 ;; 3 bytes
        abs_workspace_current_drive = &C317 ;; &FF=no current drive, otherwise top 3 bits are drive number
        abs_workspace_library_directory = &C318 ;; 3 bytes (sector number); &C31A (high byte)=&FF->no library directory
@@ -1326,7 +1328,7 @@ ENDIF
        STX &B2
        LDY #&02
 .L84FB JSR chunk_51
-       CMP &C234,Y
+       CMP abs_workspace_another_sector_num,Y
        BCS L8508
        LDX &B2
        BRA L84EF
@@ -1343,7 +1345,7 @@ ENDIF
        PHP
        LDY #&00
 .L8518 PLP
-       LDA &C234,Y
+       LDA abs_workspace_another_sector_num,Y
        ADC &C237,Y
        PHP
        CMP &C000,X
@@ -1363,7 +1365,7 @@ ENDIF
 .L8538 PLP
        JSR chunk_24
        PHP
-       CMP &C234,Y
+       CMP abs_workspace_another_sector_num,Y
        BEQ L854A
        LDX &B2
        PLA
@@ -1400,7 +1402,7 @@ ENDIF
        LDY #&00
        CLC
        PHP
-.L859A LDA &C234,Y
+.L859A LDA abs_workspace_another_sector_num,Y
        STA &C000,X
        PLP
        LDA &C100,X
@@ -1442,7 +1444,7 @@ ENDIF
 .L85BB PLP
        JSR chunk_24
        PHP
-       CMP &C234,Y
+       CMP abs_workspace_another_sector_num,Y
        BEQ L85CB
        PLP
 ;;
@@ -1464,7 +1466,7 @@ ENDIF
        BRA L8602
 ;;
 .L8615 LDY #&00
-.L8617 LDA &C234,Y
+.L8617 LDA abs_workspace_another_sector_num,Y
        STA &C000,X
        LDA &C237,Y
        STA &C100,X
@@ -1860,14 +1862,14 @@ ENDIF
        CMP #&24		       
        BEQ L8896	       ;; branch if (&B4) is '$' or '&'
        JSR check_current_drive_for_disc_change
-.L88FD JSR L9456
-       BNE L892A
-       INY
-       STY &C2A2
+.L88FD JSR update_b6_to_point_to_something_based_on_b4_y_and_tya
+       BNE L892A ;; branch if Y!=0
+       INY		    ;; Y=1
+       STY abs_workspace_some_other_sector_num
        JSR lda_and_classify_b4_y
        CMP #&2E
        BNE RTS4
-.L8997 LDA &C2A2
+.L8997 LDA abs_workspace_some_other_sector_num
        SEC
        JSR chunk_55
        LDA &C22E
@@ -1922,7 +1924,7 @@ ENDIF
        BEQ L8953
        INY
        BNE L8941
-.L8953 STY &C2A2
+.L8953 STY abs_workspace_some_other_sector_num
 .L8956 
        JSR ldy_3_lda_b6_y
        BMI L897B
@@ -2417,7 +2419,7 @@ ENDIF
        JSR L8DC8
        JSR L8FE8
        BEQ L8CEC
-       JSR L9456
+       JSR update_b6_to_point_to_something_based_on_b4_y_and_tya
        BEQ L8D01
 .L8CEC RTS
 ;;
@@ -2579,7 +2581,7 @@ restricted_character_list_last_byte_offset = &05
        LDX #&02
 .chunk_30_loop2
        LDA (&B6),Y
-       STA &C234,X
+       STA abs_workspace_another_sector_num,X
        DEY
        DEX
        BPL chunk_30_loop2
@@ -3018,7 +3020,7 @@ ENDIF
        CPX abs_workspace_current_drive
        BNE L91CB
 .L91A9 LDX #&02
-.L91AB LDA &C234,X
+.L91AB LDA abs_workspace_another_sector_num,X
        CMP &C22C,X
        BNE L91CB
        DEX
@@ -3032,7 +3034,7 @@ ENDIF
        CMP abs_workspace_library_drive
        BNE L91F9
        LDX #&02
-.L91D5 LDA &C234,X
+.L91D5 LDA abs_workspace_another_sector_num,X
        CMP abs_workspace_library_directory,X
        BNE L91F9
        DEX
@@ -3046,7 +3048,7 @@ ENDIF
        CMP abs_workspace_previous_drive
        BNE L921B
        LDX #&02
-.L9203 LDA &C234,X
+.L9203 LDA abs_workspace_another_sector_num,X
        CMP abs_workspace_previous_directory,X
        BNE L921B
        DEX
@@ -3353,8 +3355,9 @@ ENDIF
        INC &B7
        BRA L9440
 ;;
-.L9456 
+.update_b6_to_point_to_something_based_on_b4_y_and_tya
 {
+.L9456 
        jsr ldy_0_lda_b4_y
        AND #&7F
        CMP #'^'
@@ -3393,7 +3396,7 @@ ENDIF
        BEQ L948B
 .L9496 JMP L8BE2        ;; Not Found error
 ;;
-.L9499 JSR L9456
+.L9499 JSR update_b6_to_point_to_something_based_on_b4_y_and_tya
        BNE L9496
 .L949E LDY &C22E
        INY
@@ -3590,7 +3593,7 @@ ENDIF
        INC A
        BNE L966C
 .L9654 LDY #&02
-.L9656 LDA &C2A2,Y
+.L9656 LDA abs_workspace_some_other_sector_num,Y
        CMP &C22C,Y
        BNE L966C
        DEY
@@ -3603,7 +3606,7 @@ ENDIF
        CMP abs_workspace_current_drive
        BNE L968C
        LDY #&02
-.L9676 LDA &C2A2,Y
+.L9676 LDA abs_workspace_some_other_sector_num,Y
        CMP abs_workspace_library_directory,Y
        BNE L968C
        DEY
@@ -3617,7 +3620,7 @@ ENDIF
        CMP abs_workspace_current_drive
        BNE L96AC
        LDY #&02
-.L9696 LDA &C2A2,Y
+.L9696 LDA abs_workspace_some_other_sector_num,Y
        CMP abs_workspace_previous_directory,Y
        BNE L96AC
        DEY
@@ -3667,11 +3670,11 @@ ENDIF
        STA &C21E
 .L9711 LDA #&08
        STA &C21A
-       LDA &C2A2
+       LDA abs_workspace_some_other_sector_num
        STA &C21D
-       LDA &C2A3
+       LDA abs_workspace_some_other_sector_num+1
        STA &C21C
-       LDA &C2A4
+       LDA abs_workspace_some_other_sector_num+2
        STA &C21B
        JSR scsi_op_using_abs_workspace_control_block
        LDA #&0A
@@ -3691,13 +3694,13 @@ ENDIF
        CMP &C261
        BNE L9783
        CLC
-       LDA &C2A2
+       LDA abs_workspace_some_other_sector_num
        ADC &C261
-       STA &C2A2
+       STA abs_workspace_some_other_sector_num
        BCC L976C
-       INC &C2A3
+       INC abs_workspace_some_other_sector_num+1
        BNE L976C
-       INC &C2A4
+       INC abs_workspace_some_other_sector_num+2
 .L976C CLC
        LDA &C2A8
        ADC &C261
@@ -3736,16 +3739,16 @@ ENDIF
        STZ &C2AC
        STZ &C2AD
 .L97B9 LDA #&FF
-       STA &C2A2
-       STA &C2A3
-       STA &C2A4
+       STA abs_workspace_some_other_sector_num
+       STA abs_workspace_some_other_sector_num+1
+       STA abs_workspace_some_other_sector_num+2
        JSR L93CC
 .L97C7 
        JSR ldy_0_lda_b6_y
        BNE L97DC
-       LDA &C2A2
-       AND &C2A3
-       AND &C2A4
+       LDA abs_workspace_some_other_sector_num
+       AND abs_workspace_some_other_sector_num+1
+       AND abs_workspace_some_other_sector_num+2
        INC A
        BNE L981E
        JMP L8F91
@@ -3789,7 +3792,7 @@ ENDIF
        LDA &B5
        STA &B7
        LDY #&02
-.L9828 LDA &C2A2,Y
+.L9828 LDA abs_workspace_some_other_sector_num,Y
        STA &C2AB,Y
        DEY
        BPL L9828
@@ -3804,7 +3807,7 @@ ENDIF
        STX &B2
        LDY #&02
 .L9844 JSR chunk_51
-       CMP &C2A2,Y
+       CMP abs_workspace_some_other_sector_num,Y
        BCS L9851
        LDX &B2
        BRA L9835
@@ -3822,7 +3825,7 @@ ENDIF
        LDA &BFFA,X
        ADC &C0FA,X
        PHP
-       CMP &C2A2,Y
+       CMP abs_workspace_some_other_sector_num,Y
        BEQ L9871
        PLP
 .L986E JMP L97B9
@@ -3837,8 +3840,8 @@ ENDIF
        STA &C292,Y
        STA &C22A,Y
        STA &C224,Y
-       LDA &C2A2,X
-       STA &C234,X
+       LDA abs_workspace_some_other_sector_num,X
+       STA abs_workspace_another_sector_num,X
        DEX
        BPL L9880
        JSR L84E1
@@ -5946,9 +5949,9 @@ ENDIF
        BNE LA3B5
        JSR LA4B1
 .LA3FE LDA &B4
-       STA &C2A2
+       STA abs_workspace_some_other_sector_num
        LDA &B5
-       STA &C2A3
+       STA abs_workspace_some_other_sector_num+1
        LDY #&0E
        LDA (&B6),Y
        LDX #&02
@@ -6160,7 +6163,7 @@ ENDIF
        BNE LA5A5
        LDA &B6
        LDY #&03
-.LA59C STA &C234,Y
+.LA59C STA abs_workspace_another_sector_num,Y
        LDA &C313,Y
        DEY
        BPL LA59C
@@ -6178,7 +6181,7 @@ ENDIF
        JSR L8D1B
        LDY #&03
        LDA &B6
-.LA5CA CMP &C234,Y
+.LA5CA CMP abs_workspace_another_sector_num,Y
        BNE LA625
        LDA &C313,Y
        DEY
@@ -6304,7 +6307,7 @@ ENDIF
        STA &B4
        JSR L8FE8
        LDX #&05
-.LA6AF STZ &C234,X
+.LA6AF STZ abs_workspace_another_sector_num,X
        DEX
        BPL LA6AF
        JSR L921B
@@ -6515,14 +6518,14 @@ ENDIF
        JSR L8C6D
        LDY #&16
        LDA (&B6),Y
-       STA &C2A2
+       STA abs_workspace_some_other_sector_num
        INY
        LDA (&B6),Y
-       STA &C2A3
+       STA abs_workspace_some_other_sector_num+1
        INY
        LDA (&B6),Y
        ORA abs_workspace_current_drive
-       STA &C2A4
+       STA abs_workspace_some_other_sector_num+2
        LDX #&00
        LDY #&03
 .LA8EE LDA &C289,Y
@@ -6557,8 +6560,8 @@ ENDIF
        LDA #as_something
        TSB zp_adfs_status_flag
        LDA abs_workspace_current_drive2
-       ORA &C2A4
-       STA &C2A4
+       ORA abs_workspace_some_other_sector_num+2
+       STA abs_workspace_some_other_sector_num+2
        LDA &C273
        ORA &C2AA
        STA &C2AA
@@ -7257,12 +7260,12 @@ ENDIF
        JSR LB4DF
        LDX &CF
        LDA &C3CA,X
-       STA &C234
+       STA abs_workspace_another_sector_num
        LDA &C3C0,X
-       STA &C235
+       STA abs_workspace_another_sector_num+1
        LDA &C3B6,X
        AND #&1F
-       STA &C236
+       STA abs_workspace_another_sector_num+2
        LDA #&05
        STA &B8
        LDA #&C4
@@ -7437,8 +7440,8 @@ ENDIF
        STA &C261
        LDX #&00
        LDY #&02
-.LAFC3 LDA &C234,Y
-       STA &C2A2,Y
+.LAFC3 LDA abs_workspace_another_sector_num,Y
+       STA abs_workspace_some_other_sector_num,Y
        CMP &C23A,Y
        BEQ LAFD2
        INX
@@ -7477,29 +7480,29 @@ ENDIF
        LDA &C29B
        CLC
        ADC &C3CA,X
-       STA &C234
+       STA abs_workspace_another_sector_num
        LDA &C29C
        ADC &C3C0,X
-       STA &C235
+       STA abs_workspace_another_sector_num+1
        LDA &C29D
        ADC &C3B6,X
-       STA &C236
+       STA abs_workspace_another_sector_num+2
        LDA &C29A
        BNE LB04F
-       LDA &C234
+       LDA abs_workspace_another_sector_num
        BNE LB04C
-       LDA &C235
+       LDA abs_workspace_another_sector_num+1
        BNE LB049
-       DEC &C236
-.LB049 DEC &C235
-.LB04C DEC &C234
-.LB04F LDA &C234
+       DEC abs_workspace_another_sector_num+2
+.LB049 DEC abs_workspace_another_sector_num+1
+.LB04C DEC abs_workspace_another_sector_num
+.LB04F LDA abs_workspace_another_sector_num
        CMP &C296
        BNE LB06A
-       LDA &C235
+       LDA abs_workspace_another_sector_num+1
        CMP &C297
        BNE LB06A
-       LDA &C236
+       LDA abs_workspace_another_sector_num+2
        CMP &C298
        BEQ LB0BD
 ;;
@@ -7521,13 +7524,13 @@ ENDIF
        ORA &C204,X
        STA &C204,X
        JSR LAB06
-       LDA &C234
+       LDA abs_workspace_another_sector_num
        CMP &C201,X
        BNE LB0AD
-       LDA &C235
+       LDA abs_workspace_another_sector_num+1
        CMP &C202,X
        BNE LB0AD
-       LDA &C236
+       LDA abs_workspace_another_sector_num+2
        CMP &C203,X
        BEQ LB0BD
 .LB0AD INC &C201,X
@@ -7927,15 +7930,15 @@ ENDIF
 .LB442 JSR LADD4
        LDA &C352,X
        CMP #&01
-       LDA &C234
+       LDA abs_workspace_another_sector_num
        ADC &C348,X
-       STA &C234
-       LDA &C235
+       STA abs_workspace_another_sector_num
+       LDA abs_workspace_another_sector_num+1
        ADC &C33E,X
-       STA &C235
-       LDA &C236
+       STA abs_workspace_another_sector_num+1
+       LDA abs_workspace_another_sector_num+2
        ADC &C334,X
-       STA &C236
+       STA abs_workspace_another_sector_num+2
        JSR chunk_45
        SBC &C348,X
        STA &C237
