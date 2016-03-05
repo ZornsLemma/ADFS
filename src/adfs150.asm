@@ -15,7 +15,8 @@ control_block_full_size = 16
 control_block_size_excl_length = 10 ;; TODO: poor name, it's not the size, it's the highest byte to copy
 
 top_bit = &80
-top_bit_cr = &0D + top_bit
+cr = &0D
+top_bit_cr = cr + top_bit
 
 max_command_name_length = &09
 
@@ -82,6 +83,7 @@ abs_workspace_default_retries = &C200
 abs_workspace_control_block = &C215
 ;; TODO: What's the difference between abs_workspace_current_drive and
 ;; abs_workspace_current_drive2?
+abs_workspace_filename = &C262 ;; 10 bytes (&C262-&C26C inclusive) TODO: this may possibly be the current directory name??
 abs_workspace_current_drive2 = &C26F
 abs_workspace_some_other_sector_num = &C2A2 ;; 3 bytes
 abs_workspace_disc_changed_flag = &C2C2 ;; bit 0=drive 0 etc, set=maybe changed, clear=checked and not changed
@@ -138,6 +140,7 @@ abs_workspace_park = &C900
 dir_master_sequence_offset = 0
 dir_hugo_offset = 1
 dir_entry_size = 26 ;; &1A
+max_filename_len = 10 ;; really maximum length of a filename "component"
 ;; 
 
 ;; ADFS Error Information:
@@ -1665,7 +1668,7 @@ ENDIF
 .L876D LDY #&09
 {
 .L876F JSR get_stripped_filename_character_zp_dir_ptr_y
-       STA &C262,Y
+       STA abs_workspace_filename,Y
        DEY
        BPL L876F
 }
@@ -1674,18 +1677,18 @@ ENDIF
 .L877C CPX #&0A
 {
        BCS L87C1
-       LDA &C262,X
-       CMP #&21
+       LDA abs_workspace_filename,X
+       CMP #'!' ;; first non-space ASCII character
        BCC L87C1
        ORA #&20
        STA &C22B
-       CPY #&0A
-       BCS L87AB
+       CPY #max_filename_len
+       BCS hit_max_filename_len
        JSR lda_and_classify_b4_y
        BEQ L87B0
-       CMP #&2A
+       CMP #'*'
        BEQ L87D1
-       CMP #&23
+       CMP #'#'
        BEQ L87A6
        ORA #&20
        CMP &C22B
@@ -1697,12 +1700,17 @@ ENDIF
 }
 .L87AA RTS
 ;;
+.hit_max_filename_len
+;; It's an error unless the next component is a terminator or directory
+;; separator
+{
 .L87AB JSR lda_and_classify_b4_y
        BNE error_bad_name
+}
 .L87B0 JSR lda_and_classify_b4_y
-       CMP #&23
+       CMP #'#'
        BEQ L87CE
-       CMP #&2A
+       CMP #'*'
        BEQ L87CE
        DEY
        BPL L87B0
@@ -1713,15 +1721,15 @@ ENDIF
        BEQ L87AA
        JSR lda_and_classify_b4_y
        BEQ L87AA
-       CMP #&2A
+       CMP #'*'
        BEQ L87D1
 .L87CE CMP #&00
        RTS
 ;;
 .L87D1 INY
-.L87D2 LDA &C262,X
+.L87D2 LDA abs_workspace_filename,X
        AND #&7F
-       CMP #&21
+       CMP #'!' ;; first non-space ASCII character
        BCC L87F4
        CPX #&0A
        BCS L87F4
@@ -1922,10 +1930,10 @@ ENDIF
        EQUS "Bad rename"
        EQUB &00
 ;;
-.L8910 LDA #&24
-       STA &C262
-       LDA #&0D
-       STA &C263
+.L8910 LDA #'$'
+       STA abs_workspace_filename
+       LDA #cr
+       STA abs_workspace_filename+1
        LDA #<fake_root
        STA zp_dir_ptr
        LDA #>fake_root
