@@ -76,6 +76,7 @@ abs_workspace_control_block = &C215
 ;; TODO: What's the difference between abs_workspace_current_drive and
 ;; abs_workspace_current_drive2?
 abs_workspace_current_drive2 = &C26F
+abs_workspace_disc_changed_flag = &C2C2 ;; bit 0=drive 0 etc, set=maybe changed, clear=checked and not changed
 abs_workspace_time = &C2C3 ;; 5 bytes
 abs_workspace_time_delta = &C2C8 ;; 5 bytes
 abs_workspace_screen_flag = &C2D7 ;; 0 or a stored copy of ACCCON
@@ -93,7 +94,7 @@ abs_workspace_something_else = &C30A
        ;; abs_workspace_saved_current_drive. This could be completely wrong.
        abs_workspace_saved_current_drive = &C22F
        abs_workspace_current_directory_sector_num = &C314 ;; 3 bytes
-       abs_workspace_current_drive = &C317 ;; &FF=no current drive
+       abs_workspace_current_drive = &C317 ;; &FF=no current drive, otherwise top 3 bits are drive number
        abs_workspace_library_directory = &C318 ;; 3 bytes (sector number); &C31A (high byte)=&FF->no library directory
        abs_workspace_library_drive = &C31B
        abs_workspace_previous_directory = &C31C ;; 3 bytes (sector number); &C31E (high byte)=&FF->no previous directory
@@ -2733,7 +2734,7 @@ restricted_character_list_last_byte_offset = &05
        JSR chunk_3
 
        JSR scsi_op_using_abs_workspace_control_block
-       JSR chunk_12
+       JSR ldx_abs_workspace_current_drive_div_16
        LDA &C1FC
        STA &C322,X
        LDA &FE44        ;; System VIA Latch Lo
@@ -5029,7 +5030,7 @@ ENDIF
        STA abs_workspace_saved_current_drive
        RTS
 
-.chunk_12
+.ldx_abs_workspace_current_drive_div_16
        LDA abs_workspace_current_drive
 ;; X=(A DIV 16)
 .LB5C5 JSR lsr_a_4
@@ -7946,29 +7947,34 @@ ENDIF
 .LB4CA DEX
        BPL LB4BB
 ;;
-.LB4CD JSR chunk_12
+.LB4CD JSR ldx_abs_workspace_current_drive_div_16
        LDA &C1FB
        STA &C321,X
        LDA &C1FC
        STA &C322,X
-.LB4DF JSR set_c2c2_to_ff_if_slow
-.LB4E2 JSR chunk_12
+.LB4DF JSR set_disc_changed_flag_to_ff_periodically
+.LB4E2 JSR ldx_abs_workspace_current_drive_div_16
+{
        LDA &C1FB
        CMP &C321,X
-       BNE LB4FF
+       BNE error_disc_changed
        LDA &C1FC
        CMP &C322,X
-       BNE LB4FF
-       JSR and_c2c2_with_7_bits_based_on_x_div_2
-       STA &C2C2
+       BNE error_disc_changed
+       ;; Disc not changed, record that we've verified this so we don't
+       ;; check again for at least 5.12 seconds.
+       JSR lda_disc_changed_flag_with_bit_x_div_2_cleared
+       STA abs_workspace_disc_changed_flag
        RTS
 ;;
+.error_disc_changed
 .LB4FF JSR generate_error_inline
        EQUB &C8         ;; ERR=200
        EQUS "Disc changed"
        EQUB &00
+}
 
-.set_c2c2_to_ff_if_slow
+.set_disc_changed_flag_to_ff_periodically
 {
 ;; now = TIME
 ;; abs_workspace_time_delta = now - abs_workspace_time
@@ -7992,7 +7998,7 @@ ENDIF
        ;; Y=&FF
 
        ;; If delta is < &200 centiseconds (5.12 seconds), just RTS, otherwise
-       ;; store Y=&FF at &C2C2
+       ;; store Y=&FF at abs_workspace_disc_changed_flag
        LDA abs_workspace_time_delta+4
        ORA abs_workspace_time_delta+3
        ORA abs_workspace_time_delta+2
@@ -8000,24 +8006,29 @@ ENDIF
        LDA abs_workspace_time_delta+1
        CMP #&02
        BCC LB545
-.LB542 STY &C2C2
+.LB542 STY abs_workspace_disc_changed_flag
 }
 .LB545 RTS
 ;;
-.LB546 JSR set_c2c2_to_ff_if_slow
-       JSR chunk_12
-       JSR and_c2c2_with_7_bits_based_on_x_div_2
-       EOR &C2C2
-       BEQ LB545
+.LB546 JSR set_disc_changed_flag_to_ff_periodically
+       ;; Since abs_workspace_current_drive has drive number in top 3 bits,
+       ;; div 16 then div 2 gets the drive number down into the range 0-7, so
+       ;; here we are clearing the bit in abs_workspace_disc_changed_flag corresponding to the current
+       ;; drive.
+       JSR ldx_abs_workspace_current_drive_div_16
+       JSR lda_disc_changed_flag_with_bit_x_div_2_cleared
+       EOR abs_workspace_disc_changed_flag ; is bit (X div 2) clear in abs_workspace_disc_changed_flag?
+       BEQ LB545 ; if so, RTS
+	         ; if not, re-load free space map and check for disc changed
        JSR scsi_op_load_fsm
        BRA LB4E2
 ;;
 ;; TODO: Not quite sure what this is doing, but can see we're basically shifting
 ;; a 9-bit pattern of all 1s except for a single 0 bit around based on X/2,
-;; which we then AND with &C2C2. (Not strictly always 7 bits, as eventually the
+;; which we then AND with abs_workspace_disc_changed_flag. (Not strictly always 7 bits, as eventually the
 ;; zero bit will be back in the carry and A will be &FF at the AND stage. But I
 ;; hope this name is temporary anyway.)
-.and_c2c2_with_7_bits_based_on_x_div_2
+.lda_disc_changed_flag_with_bit_x_div_2_cleared
 {
 .LB560 LDA #&FF
        CLC
@@ -8025,7 +8036,7 @@ ENDIF
        DEX
        DEX
        BPL LB563
-       AND &C2C2
+       AND abs_workspace_disc_changed_flag
        RTS
 }
 ;;
@@ -8033,11 +8044,11 @@ ENDIF
        STA &C2CD
        PHX
        PHY
-       JSR set_c2c2_to_ff_if_slow
+       JSR set_disc_changed_flag_to_ff_periodically
        LDA &C2CD
        JSR LB5C5
-       JSR and_c2c2_with_7_bits_based_on_x_div_2
-       EOR &C2C2
+       JSR lda_disc_changed_flag_with_bit_x_div_2_cleared
+       EOR abs_workspace_disc_changed_flag
        BEQ LB5C2
        LDA &C2CD
        TAX
