@@ -7989,11 +7989,11 @@ ENDIF
        INX
        DEY
        BPL LB51E
-       LDA &C2CC
-       ORA &C2CB
-       ORA &C2CA
+       LDA abs_workspace_time_delta+4
+       ORA abs_workspace_time_delta+3
+       ORA abs_workspace_time_delta+2
        BNE LB542
-       LDA &C2C9
+       LDA abs_workspace_time_delta+1
        CMP #&02
        BCC LB545
 .LB542 STY &C2C2
