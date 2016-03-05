@@ -37,6 +37,10 @@ sector_number_max_offset = &02 ;; a sector is three bytes (0, 1, 2)
 ;; Zero page workspace
 
 zp_control_block_ptr = &B0 ;; 2 bytes
+;; TODO: zp_dir_ptr is used as a general pointer in some places, so this name
+;; may not be helpful - but it does very often seem to be used to point into a
+;; directory
+zp_dir_ptr = &B6 ;; 2 bytes
 zp_current_retries = &CE
 zp_text_pointer = &F2
 
@@ -128,6 +132,10 @@ abs_workspace_current_directory_s2 = &C600
 abs_workspace_current_directory_s3 = &C700
 abs_workspace_current_directory_s4 = &C800
 abs_workspace_park = &C900
+
+;; A directory consists of 5 sectors containing 47 26-byte entries, then some
+;; information in the last few bytes of the last sector.
+dir_entry_size = 26 ;; &1A
 
 ;; ADFS Error Information:
 abs_workspace_error = &C2D0
@@ -994,7 +1002,7 @@ ENDIF
 ;; Do a disk access
 ;; ----------------
 .L82B4 JSR chunk_22
-       JMP L8BE2        ;; Not Found error
+       JMP error_not_found ;; Not Found error
 ;;
 .check_drive_ready
 .L82DC 
@@ -1638,10 +1646,12 @@ ENDIF
        BPL L8758
 ;;
 .error_bad_name
+{
 .L8760 JSR generate_error_inline
        EQUB &CC         ;; ERR=204
        EQUS "Bad name"
        EQUB &00
+}
 ;;
 .L876D LDY #&09
 .L876F JSR chunk_40
@@ -1736,16 +1746,16 @@ ENDIF
        JSR L93CC
        JSR LA714
 .L8815 
-       JSR ldy_0_lda_b6_y
+       JSR ldy_0_lda_zp_dir_ptr_y
        BEQ L882E
        JSR L8756
        BEQ L8830
        BCC L8830
-       LDA &B6
+       LDA zp_dir_ptr
        ADC #&19
-       STA &B6
+       STA zp_dir_ptr
        BCC L8815
-       INC &B7
+       INC zp_dir_ptr+1
        BNE L8815
 .L882E CMP #&0F
 .L8830 RTS
@@ -1807,8 +1817,14 @@ ENDIF
 }
 
 ;;
+;; TODO: I am still not sure *exactly* what this does, but to a first
+;; approximation it appears to leave zp_dir_ptr pointing to the directory specified by
+;; the string at &B4. On exit I think Z set indicates the directory was located
+;; successfully.
+.get_directory_given_name
 .L8870 JSR validate_pathname_at_first_name_character_zero_c2c0_classify_first_pathname_character
        BEQ error_bad_name_indirect
+.get_directory_given_name2
 .L8875 JSR validate_pathname_at_first_name_character_zero_c2c0_classify_first_pathname_character
 {
        BEQ L8899
@@ -1866,12 +1882,12 @@ ENDIF
        CMP #&24		       
        BEQ L8896	       ;; branch if (&B4) is '$' or '&'
        JSR check_current_drive_for_disc_change
-.L88FD JSR update_b6_to_point_to_something_based_on_b4_y_and_tya
+.L88FD JSR update_zp_dir_ptr_to_point_to_something_based_on_b4_y_and_tya
        BNE L892A ;; branch if Y!=0
        INY		    ;; Y=1
        STY abs_workspace_some_other_sector_num
        JSR lda_and_classify_b4_y
-       CMP #&2E
+       CMP #'.'
        BNE RTS4
 .L8997 LDA abs_workspace_some_other_sector_num
        SEC
@@ -1883,10 +1899,10 @@ ENDIF
        BRA L88FD
 ;;
 .L897B LDY #&09
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        BPL L8997
        AND #&7F
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        JSR L8F91
 .L8988 JSR generate_error_inline
        EQUB &B0         ;; ERR=176
@@ -1897,10 +1913,10 @@ ENDIF
        STA &C262
        LDA #&0D
        STA &C263
-       LDA #<L94D3
-       STA &B6
-       LDA #>L94D3
-       STA &B7
+       LDA #<fake_root
+       STA zp_dir_ptr
+       LDA #>fake_root
+       STA zp_dir_ptr+1
        LDA #&02
        STA &C2C0
        LDA #&00
@@ -1908,7 +1924,7 @@ ENDIF
        RTS
 ;;
 .L8930 LDX #&01
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BPL L8939
        INX
 .L8939 STX &C2C0
@@ -1930,7 +1946,7 @@ ENDIF
        BNE L8941
 .L8953 STY abs_workspace_some_other_sector_num
 .L8956 
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BMI L897B
        JSR L8964
        BEQ L8956
@@ -1938,15 +1954,17 @@ ENDIF
        RTS
 ;;
 .L8964
-       JSR clc_lda_b6_adc_1a_sta_b6
+{
+       JSR advance_zp_dir_ptr_low_by_dir_entry_size
        BCC L896F
-       INC &B7
+       INC zp_dir_ptr+1
 .L896F 
-       JSR ldy_0_lda_b6_y
+       JSR ldy_0_lda_zp_dir_ptr_y
        BEQ L8961
        JSR L8756
        BNE L8964
        RTS
+}
 ;;
 ;;
 .LA4BD JSR chunk_32_a
@@ -2237,13 +2255,13 @@ ENDIF
 ;;
 .L8BBB JMP L81AD        ;; Jump to release and finish
 ;;
-.L8BBE JSR L8870
+.L8BBE JSR get_directory_given_name
        BEQ L8BCA
        RTS
 .L8BC5 JSR L8964
        BNE L8BD2
 .L8BCA 
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BMI L8BC5
 .L8BD0 LDA #&00
 .L8BD2 RTS
@@ -2271,10 +2289,13 @@ ENDIF
 .L8BDE CMP #&40
        BEQ jmp_error_bad_name
 }
+.error_not_found
+{
 .L8BE2 JSR generate_error_inline
        EQUB &D6         ;; ERR=210
        EQUS "Not found"
        EQUB &00
+}
 ;;
 ;; Search for object, give error if 'E' set
 ;; ========================================
@@ -2290,7 +2311,7 @@ ENDIF
 ;; =================
 .L8C10 JSR L8BBE
        BNE error_file_not_found_or_bad_name
-       JSR ldy_0_lda_b6_y
+       JSR ldy_0_lda_zp_dir_ptr_y
        BPL L8BFB
 .L8C1B LDY #&06
        LDA (&B8),Y
@@ -2314,14 +2335,14 @@ ENDIF
        STZ &C21F
        LDY #&16
        LDX #&03
-.L8C4E LDA (&B6),Y
+.L8C4E LDA (zp_dir_ptr),Y
        STA &C21A,X      ;; Copy sector start
        INY
        DEX
        BNE L8C4E
        LDY #&15
        LDX #&04
-.L8C5B LDA (&B6),Y
+.L8C5B LDA (zp_dir_ptr),Y
        STA &C21F,X      ;; Copy length
        DEY
        DEX
@@ -2423,7 +2444,7 @@ ENDIF
        JSR L8DC8
        JSR L8FE8
        BEQ L8CEC
-       JSR update_b6_to_point_to_something_based_on_b4_y_and_tya
+       JSR update_zp_dir_ptr_to_point_to_something_based_on_b4_y_and_tya
        BEQ L8D01
 .L8CEC RTS
 ;;
@@ -2431,7 +2452,7 @@ ENDIF
        BNE L8CF9
 ;;
 .L8D1B LDY #&02
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        BPL L8D2C
        JSR generate_error_inline
        EQUB &C3         ;; ERR=195
@@ -2455,7 +2476,7 @@ ENDIF
        RTS
 ;;
 .L8D12 
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BPL L8D1B
        JMP L95AB
 ;;
@@ -2577,14 +2598,14 @@ restricted_character_list_last_byte_offset = &05
 .chunk_30_loop1
        INY
        LDA #&00
-       ADC (&B6),Y
+       ADC (zp_dir_ptr),Y
        STA &C224,Y
        DEX
        BPL chunk_30_loop1
        LDY #&18
        LDX #sector_number_max_offset
 .chunk_30_loop2
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA abs_workspace_another_sector_num,X
        DEY
        DEX
@@ -2609,7 +2630,7 @@ restricted_character_list_last_byte_offset = &05
        STA &B4
        LDA #&C8
        STA &B5
-       LDY #&1A
+       LDY #&1A ;; dir_entry_size?
        LDX #&06
 .L8E4E STZ &C233,X
        DEX
@@ -2617,10 +2638,10 @@ restricted_character_list_last_byte_offset = &05
 .L8E54 LDA (&B4,X)
        STA (&B4),Y
        LDA &B4
-       CMP &B6
+       CMP zp_dir_ptr
        BNE L8E64
        LDA &B5
-       CMP &B7
+       CMP zp_dir_ptr+1
        BEQ L8E6F
 .L8E64 LDA &B4
        BNE L8E6A
@@ -2644,31 +2665,31 @@ restricted_character_list_last_byte_offset = &05
        LDX #&03
 .L8EA5 LDA &C211,Y
        SBC &C20D,Y
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        INY
        DEX
        BPL L8EA5
        LDY #&0A
 .L8EB3 LDA &C20D,Y
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        INY
        CPY #&12
        BNE L8EB3
-       LDA &B6
+       LDA zp_dir_ptr
        PHA
-       LDA &B7
+       LDA zp_dir_ptr+1
        PHA
 .L8EC3 JSR chunk_42
 .L8ECB 
-       JSR ldy_0_lda_b6_y
+       JSR ldy_0_lda_zp_dir_ptr_y
        BEQ L8EF8
        LDY #&19
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        CMP &C8FA
        BEQ L8EE7
-       JSR clc_lda_b6_adc_1a_sta_b6
+       JSR advance_zp_dir_ptr_low_by_dir_entry_size
        BCC L8ECB
-       INC &B7
+       INC zp_dir_ptr+1
        BCS L8ECB
 .L8EE7 LDA &C8FA
        CLC
@@ -2680,12 +2701,12 @@ restricted_character_list_last_byte_offset = &05
        BRA L8EC3
 ;;
 .L8EF8 PLA
-       STA &B7
+       STA zp_dir_ptr+1
        PLA
-       STA &B6
+       STA zp_dir_ptr
        LDY #&19
        LDA &C8FA
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        LDA #&01
        STA &C215
        LDX #&04
@@ -2698,7 +2719,7 @@ restricted_character_list_last_byte_offset = &05
        STZ &C21E
        STZ &C21F
        LDY #&12
-.L8F26 LDA (&B6),Y
+.L8F26 LDA (zp_dir_ptr),Y
        STA &C20E,Y
        INY
        CPY #&16
@@ -2707,7 +2728,7 @@ restricted_character_list_last_byte_offset = &05
        LDX #&02
 .L8F38 LDA #&00
        INY
-       ADC (&B6),Y
+       ADC (zp_dir_ptr),Y
        STA &C22A,Y
        DEX
        BPL L8F38
@@ -2716,11 +2737,11 @@ restricted_character_list_last_byte_offset = &05
 ;;
 .L8F48 LDY #&16
        LDA #&FF
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        INY
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        INY
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        JMP L84E1
 ;;
 .L8F57 JSR chunk_31
@@ -2729,7 +2750,7 @@ restricted_character_list_last_byte_offset = &05
 .L8F63 LDY #&18
        LDX #&02
 .L8F67 LDA &C23A,X
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        DEY
        DEX
        BPL L8F67
@@ -2776,7 +2797,7 @@ restricted_character_list_last_byte_offset = &05
        LDA #&00
        RTS
 ;;
-.L8FE8 JSR L8870
+.L8FE8 JSR get_directory_given_name
        PHP
        PHA              ;; Save registers
        JSR L8FF3        ;; Check loaded FSM
@@ -2896,7 +2917,7 @@ ENDIF
 ;;
 ;; Write Info - file found
 ;; -----------------------
-;; (&B6)=>file info, (&B8)=>control block
+;; (zp_dir_ptr)=>file info, (&B8)=>control block
 .L9090 LDA &C223        ;; Get OSFILE function
        CMP #&03
        BEQ L90B8        ;; Jump past with Exec
@@ -2934,7 +2955,7 @@ IF PATCH_FULL_ACCESS
 .WrNotE
         JSR chunk_28
         ROR A
-        STA (&B6),Y
+        STA (zp_dir_ptr),Y
         CPY #4
         BEQ WrIsE
         CPY #2
@@ -2949,7 +2970,7 @@ IF PATCH_FULL_ACCESS
         DEY
         BPL WrLp
 ELSE
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BPL L90F2        ;; Jump if a file
        LSR &C22B
        LSR &C22B
@@ -2959,11 +2980,11 @@ ELSE
 ;;
 .L90F2 LDY #&00         ;; Point to 'R' bit
 ;;
-.L90F4 LDA (&B6),Y      ;; Get filename byte
+.L90F4 LDA (zp_dir_ptr),Y      ;; Get filename byte
        ASL A            ;; Drop access bit
        LSR &C22B        ;; Get supplied access bit
        ROR A            ;; Move into filename byte
-       STA (&B6),Y      ;; Store in object info
+       STA (zp_dir_ptr),Y      ;; Store in object info
        INY              ;; Step to next byte
        CPY #&02
        BCC L90F4        ;; Loop until RW done
@@ -2996,7 +3017,7 @@ ENDIF
 .check_for_dir_not_empty
 {
 .L9131 JSR L8D1B
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BPL check_for_cant_delete_csd
        LDY #&03
 .L913C LDA abs_workspace_current_directory2_sector_num,Y
@@ -3021,7 +3042,7 @@ ENDIF
 {
 .L9177 
        JSR chunk_30
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BPL L921B
        LDX abs_workspace_saved_current_drive
        CPX #&FF
@@ -3073,17 +3094,17 @@ ENDIF
 .L921B JSR chunk_26
        BMI L9224
        JSR L8C70
-.L9224 LDY #&1A
+.L9224 LDY #&1A ;; dir_entry_size?
        LDX #&00
-.L9228 LDA (&B6),Y
-       STA (&B6,X)
-       INC &B6
+.L9228 LDA (zp_dir_ptr),Y
+       STA (zp_dir_ptr,X)
+       INC zp_dir_ptr
        BNE L9232
-       INC &B7
-.L9232 LDA &B6
+       INC zp_dir_ptr+1
+.L9232 LDA zp_dir_ptr
        CMP #&BB
        BNE L9228
-       LDA &B7
+       LDA zp_dir_ptr+1
        CMP #&C8
        BNE L9228
        JSR L84E1
@@ -3144,9 +3165,9 @@ ENDIF
 .print_argument_table_entry
 .L9283 TAX
        LDA #>argument_string_table
-       STA &B7
+       STA zp_dir_ptr+1
        LDA argument_string_index_table,X
-       STA &B6
+       STA zp_dir_ptr
        LDX #&0C
 ;;
 .L928F LDY #&00
@@ -3170,11 +3191,11 @@ ENDIF
 .print_inline_to_top_bit_set
 {
 .L92A8 PLA
-       STA &B6
+       STA zp_dir_ptr
        PLA
-       STA &B7
+       STA zp_dir_ptr+1
        LDY #&01
-.L92B0 LDA (&B6),Y
+.L92B0 LDA (zp_dir_ptr),Y
        BMI L92BA
        JSR L92CB
        INY
@@ -3183,10 +3204,10 @@ ENDIF
        JSR L92CB
        TYA
        CLC
-       ADC &B6
+       ADC zp_dir_ptr
        TAY
        LDA #&00
-       ADC &B7
+       ADC zp_dir_ptr+1
        PHA
        PHY
        RTS
@@ -3195,17 +3216,17 @@ ENDIF
 .L92CB PHA
        TXA
        PHA
-       LDA &B6
+       LDA zp_dir_ptr
        PHA
-       LDA &B7
+       LDA zp_dir_ptr+1
        PHA
        TSX
        LDA &0104,X
        JSR print_a
        PLA
-       STA &B7
+       STA zp_dir_ptr+1
        PLA
-       STA &B6
+       STA zp_dir_ptr
        PLA
        TAX
        PLA
@@ -3218,7 +3239,7 @@ ENDIF
        JSR print_space
        LDY #&04         ;; Point to access bits
        LDX #&03         ;; Allow three characters padding
-.L92F1 LDA (&B6),Y      ;; Get access bit
+.L92F1 LDA (zp_dir_ptr),Y      ;; Get access bit
        ROL A
        BCC L92FD        ;; Not set, step to next one
        LDA L931D,Y      ;; Get access character
@@ -3245,7 +3266,7 @@ ENDIF
 .L931D EQUS "RWLDE"
 ;;
 .chunk_65
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
 .L9322 PHA
        JSR lsr_a_4
        JSR L932B
@@ -3255,9 +3276,9 @@ ENDIF
 ;;
 .L9331 JSR LA714
        LDA #&D9
-       STA &B6
+       STA zp_dir_ptr
        LDA #&C8
-       STA &B7
+       STA zp_dir_ptr+1
        LDX #&13
        JSR chunk_64
        EQUB &20, &A8
@@ -3273,9 +3294,9 @@ ENDIF
        ADC #&30
        JSR print_a
        LDA #<L9A68
-       STA &B6
+       STA zp_dir_ptr
        LDA #>L9A68
-       STA &B7
+       STA zp_dir_ptr+1
        LDX #&0D
        JSR chunk_64
        EQUS "Option", &A0
@@ -3285,31 +3306,31 @@ ENDIF
        EQUB &20, &A8
        LDX &C1FD
        LDA L9426,X
-       STA &B6
+       STA zp_dir_ptr
        LDA #>L9426
-       STA &B7
+       STA zp_dir_ptr+1
        LDX #&04
        JSR chunk_64
        EQUS ")",&0D,"Dir.",&A0
-       STZ &B6
+       STZ zp_dir_ptr
        LDA #&C3
-       STA &B7
+       STA zp_dir_ptr+1
        LDX #&0A
        JSR chunk_64
        EQUS "     Lib.",&A0
        LDA #&0A
-       STA &B6
+       STA zp_dir_ptr
        LDA #&C3
-       STA &B7
+       STA zp_dir_ptr+1
        LDX #&0A
        JSR chunk_64
        EQUB &0D,top_bit_cr
 .L93CC 
 .chunk_42
        LDA #&05
-       STA &B6
+       STA zp_dir_ptr
        LDA #&C4
-       STA &B7
+       STA zp_dir_ptr+1
        RTS
 
 ;;
@@ -3321,7 +3342,7 @@ ENDIF
        LDA #&04
        STA &C22B
 .L93E3 
-       JSR ldy_0_lda_b6_y
+       JSR ldy_0_lda_zp_dir_ptr_y
        BEQ L940C
        JSR L92E5
        DEC &C22B
@@ -3333,9 +3354,9 @@ ENDIF
 ;;
 .L93FC JSR print_space
 .L93FF 
-       JSR clc_lda_b6_adc_1a_sta_b6
+       JSR advance_zp_dir_ptr_low_by_dir_entry_size
        BCC L93E3
-       INC &B7
+       INC zp_dir_ptr+1
        BCS L93E3
 .L940C LDA &C22B
        CMP #&04
@@ -3360,35 +3381,35 @@ ENDIF
 .L943A JSR L9478
 .L943D JSR L9331
 .L9440 
-       JSR ldy_0_lda_b6_y
+       JSR ldy_0_lda_zp_dir_ptr_y
        BEQ L9423
        JSR L9508
-       JSR clc_lda_b6_adc_1a_sta_b6
+       JSR advance_zp_dir_ptr_low_by_dir_entry_size
        BCC L9440
-       INC &B7
+       INC zp_dir_ptr+1
        BRA L9440
 ;;
-.update_b6_to_point_to_something_based_on_b4_y_and_tya
+.update_zp_dir_ptr_to_point_to_something_based_on_b4_y_and_tya
 {
 .L9456 
        jsr ldy_0_lda_b4_y
        AND #&7F
        CMP #'^'
        BNE L946A
-       ;; TODO: It's tempting to speculate this is setting &B6 to point to the
+       ;; TODO: It's tempting to speculate this is setting zp_dir_ptr to point to the
        ;; parent directory, but the documentation I have suggests the parent
        ;; pointer is at &D6-&D8 in sector 4 of the directory, not &C0.
        LDA #&C0
-       STA &B6
+       STA zp_dir_ptr
        LDA #>abs_workspace_current_directory_s4
-       STA &B7
+       STA zp_dir_ptr+1
        BNE L9476 ;; this will always branch
 .L946A CMP #'@'
        BNE L9477
        LDA #&FE
-       STA &B6
+       STA zp_dir_ptr
        LDA #&C2
-       STA &B7
+       STA zp_dir_ptr+1
 .L9476 TYA
 }
 .RTS9
@@ -3400,27 +3421,29 @@ ENDIF
        BCS L9486
        JSR set_z_iff_no_current_drive
        BNE L9477
-.L9486 JSR L8875
+.L9486 JSR get_directory_given_name2
        BNE L9499
 .L948B 
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BMI L949E
        JSR L8964
        BEQ L948B
-.L9496 JMP L8BE2        ;; Not Found error
+.L9496 JMP error_not_found ;; Not Found error
 ;;
-.L9499 JSR update_b6_to_point_to_something_based_on_b4_y_and_tya
+.L9499 JSR update_zp_dir_ptr_to_point_to_something_based_on_b4_y_and_tya
        BNE L9496
 .L949E LDY abs_workspace_current_directory2_sector_num+2
        INY
        JSR chunk_17
-       LDA &B7
+       LDA zp_dir_ptr+1
        CMP #&94
        BEQ RTS9
        JMP scsi_op_using_abs_workspace_control_block
 ;;
 ;; Fake entry for '$'
 ;; ==================
+.fake_root
+{
 .L94D3 EQUB &A4
        EQUB &0D
        EQUB &8D
@@ -3448,6 +3471,7 @@ ENDIF
        EQUB &00
        EQUB &00
        EQUB &00
+}
 
 .lda_b4_y_and_7f
        LDA (&B4),Y
@@ -3468,7 +3492,7 @@ ELSE
        BMI L9543        ;; If 'E' set, jump to finish      NOP:NOP
 ENDIF
        DEY
-       LDA (&B6),Y      ;; Get 'D' bit
+       LDA (zp_dir_ptr),Y      ;; Get 'D' bit
        ROL A            ;; Rotate into Carry
        LDX #&0A         ;; X=10, Y-13 if file
        LDY #&0D
@@ -3494,7 +3518,7 @@ ENDIF
        TAY
 .L953D DEY
        INX
-       CPX #&1A
+       CPX #&1A ;; dir_entry_size?
        BNE L9522
 .L9543 JMP print_cr        ;; Print newline
 ;;
@@ -3534,18 +3558,18 @@ ENDIF
 ;;
 
 .L95BE JSR chunk_57
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        DEY
        BPL L95BE
        JSR L8F5D
        LDY #&03
 .L95D6 
-       JSR lda_b6_y_ora_80_sta_b6_y
+       JSR lda_zp_dir_ptr_y_ora_80_sta_zp_dir_ptr_y
        DEY
        CPY #&01
        BNE L95D6
        DEY
-       JSR lda_b6_y_ora_80_sta_b6_y
+       JSR lda_zp_dir_ptr_y_ora_80_sta_zp_dir_ptr_y
        LDA #&00
        TAX
        TAY
@@ -3595,9 +3619,9 @@ ENDIF
        EQUB &FF
 ;;
 
-.ldy_3_lda_b6_y
+.ldy_3_lda_zp_dir_ptr_y
        LDY #&03
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
 .RTS10
        RTS
 .L9649 LDA abs_workspace_saved_current_drive
@@ -3757,7 +3781,7 @@ ENDIF
        STA abs_workspace_some_other_sector_num+2
        JSR L93CC
 .L97C7 
-       JSR ldy_0_lda_b6_y
+       JSR ldy_0_lda_zp_dir_ptr_y
        BNE L97DC
        LDA abs_workspace_some_other_sector_num
        AND abs_workspace_some_other_sector_num+1
@@ -3770,7 +3794,7 @@ ENDIF
        LDX #&02
        SEC
 .L97E1 LDA &C295,Y
-       SBC (&B6),Y
+       SBC (zp_dir_ptr),Y
        INY
        DEX
        BPL L97E1
@@ -3779,31 +3803,31 @@ ENDIF
        LDX #&02
        SEC
 .L97F1 LDA &C28C,Y
-       SBC (&B6),Y
+       SBC (zp_dir_ptr),Y
        INY
        DEX
        BPL L97F1
        BCC L9811
        LDY #&16
        LDX #&02
-.L9800 LDA (&B6),Y
+.L9800 LDA (zp_dir_ptr),Y
        STA &C28C,Y
        INY
        DEX
        BPL L9800
-       LDA &B6
+       LDA zp_dir_ptr
        STA &B4
-       LDA &B7
+       LDA zp_dir_ptr+1
        STA &B5
 .L9811 
-       JSR clc_lda_b6_adc_1a_sta_b6
+       JSR advance_zp_dir_ptr_low_by_dir_entry_size
        BCC L97C7
-       INC &B7
+       INC zp_dir_ptr+1
        BCS L97C7
 .L981E LDA &B4
-       STA &B6
+       STA zp_dir_ptr
        LDA &B5
-       STA &B7
+       STA zp_dir_ptr+1
        LDY #sector_number_max_offset
 .L9828 LDA abs_workspace_some_other_sector_num,Y
        STA &C2AB,Y
@@ -3848,7 +3872,7 @@ ENDIF
        PLP
        JSR chunk_29b
 .L9880 INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        ADC #&00
        STA &C292,Y
        STA &C22A,Y
@@ -3862,7 +3886,7 @@ ENDIF
        LDX #&02
        LDY #&18
 .L98A1 LDA &C23A,X
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        STA &C2A8,X
        DEY
        DEX
@@ -3891,24 +3915,24 @@ ENDIF
        JSR L97AE
        JSR L93CC
 .L98E2 
-       JSR ldy_0_lda_b6_y
+       JSR ldy_0_lda_zp_dir_ptr_y
        BEQ L9913
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BPL L9930
        LDA &C0
        CMP #&FE
        BEQ L9913
        ;; We don't need this LDY #&00; it's intended for the following two STA
        ;; (zp) instructions which used to be STA (zp),Y. We exit this loop at
-       ;; L98CE which does JSR L9486 which does JSR L8875
+       ;; L98CE which does JSR L9486 which does JSR get_directory_given_name2
        ;; which does JSR validate_pathname_at_first_name_character_zero_c2c0_classify_first_pathname_character which does JSR advance_b4_to_first_name_character which does LDY #&00, so no
        ;; following code relies on our assignment to Y.
        ;; LDY #&00
-       LDA &B6
+       LDA zp_dir_ptr
        STA &B4
        STA (&C0)
        INC &C0
-       LDA &B7
+       LDA zp_dir_ptr+1
        STA &B5
        STA (&C0)
        INC &C0
@@ -3931,14 +3955,14 @@ ENDIF
        ;; LDY #&00
        DEC &C0
        LDA (&C0)
-       STA &B7
+       STA zp_dir_ptr+1
        DEC &C0
        LDA (&C0)
-       STA &B6
+       STA zp_dir_ptr
 .L9930 
-       JSR clc_lda_b6_adc_1a_sta_b6
+       JSR advance_zp_dir_ptr_low_by_dir_entry_size
        BCC L98E2
-       INC &B7
+       INC zp_dir_ptr+1
        BRA L98E2
 ;;
 .L993D JMP get_fsm_and_root_from_0_if_context_not_minus_1
@@ -3954,7 +3978,7 @@ ENDIF
 ;;
 .L994A LDY #&02         ;; Clear existing LWR bits
 .L994C JSR chunk_40
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        DEY
        BPL L994C
        RTS
@@ -3963,10 +3987,10 @@ ENDIF
        JSR chunk_26
        BMI L996A        ;; Jump if 'E' file
        DEY
-       LDA (&B6),Y      ;; Get 'D' bit
+       LDA (zp_dir_ptr),Y      ;; Get 'D' bit
        AND #&80
-       ORA (&B6)        ;; Copy 'D' bit into 'R' bit
-       STA (&B6)        ;; Forces dirs to always have 'R'
+       ORA (zp_dir_ptr)        ;; Copy 'D' bit into 'R' bit
+       STA (zp_dir_ptr)        ;; Forces dirs to always have 'R'
 ;;
 .L996A STA &C22B        ;; Store 'E' or 'D'+'R' bit
        LDY #&00         ;; Step past filename
@@ -3993,7 +4017,7 @@ ENDIF
        BNE L99AA        ;; Jump past if not setting 'E'
        JSR L994A        ;; Clear all other bits
        LDY #&04
-       JSR lda_b6_y_ora_80_sta_b6_y
+       JSR lda_zp_dir_ptr_y_ora_80_sta_zp_dir_ptr_y
        STA &C22B        ;; Set 'E'/'D' flag
        BMI L99BD
 ;;
@@ -4017,7 +4041,7 @@ ENDIF
 .L99CE PHY
        TXA
        TAY
-       JSR lda_b6_y_ora_80_sta_b6_y
+       JSR lda_zp_dir_ptr_y_ora_80_sta_zp_dir_ptr_y
        PLY
        BRA L99BD
 ;;
@@ -4493,14 +4517,14 @@ ENDIF
        JSR L8FE8
        BNE L9C7A
 .L9C4E 
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BMI L9C5B
        JSR L8964
        BNE L9C7A
        BEQ L9C4E
 .L9C5B LDX #&02
        LDY #&18
-.L9C5F LDA (&B6),Y
+.L9C5F LDA (zp_dir_ptr),Y
        STA abs_workspace_library_directory,X
        DEY
        DEX
@@ -5122,7 +5146,7 @@ ENDIF
        LDX #sector_number_max_offset
        LDY #&16
 .chunk_17_loop
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA abs_workspace_some_sector_num-&16,X
        STA abs_workspace_current_directory_sector_num-&16,Y
        INY
@@ -5131,9 +5155,9 @@ ENDIF
        RTS
 
 .chunk_18
-       LDA &B6
+       LDA zp_dir_ptr
        STA &C293
-       LDA &B7
+       LDA zp_dir_ptr+1
        STA &C294
        RTS
 
@@ -5162,11 +5186,11 @@ ENDIF
 
 .chunk_26
        LDY #&04
-       LDA (&B6),Y      ;; Check 'E' bit
+       LDA (zp_dir_ptr),Y      ;; Check 'E' bit
        RTS
 
 .chunk_27b
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
 .chunk_27
        STA &C215,X      ;;  to workspace
        DEY
@@ -5174,7 +5198,7 @@ ENDIF
        RTS
 
 .chunk_28
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        ASL A
        ROL &C22B        ;; Copy LWR into &C22B
        RTS
@@ -5183,7 +5207,7 @@ ENDIF
        LDX #&02
 .chunk_29
        LDY #&12
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        CMP #&01
        RTS
 
@@ -5202,7 +5226,7 @@ ENDIF
 .L8E8A CPY #&02
        BCS L8E90
        ORA #&80
-.L8E90 STA (&B6),Y
+.L8E90 STA (zp_dir_ptr),Y
        DEY
        BPL L8E7C
        RTS
@@ -5234,7 +5258,7 @@ ENDIF
        RTS
 
 .chunk_40
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        AND #&7F
        RTS
 
@@ -5302,7 +5326,7 @@ ENDIF
        CMP abs_workspace_current_directory_sector_num+2
        BNE chunk_53_rts
        LDY #&19
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        CMP &C3F2,X
 .chunk_53_rts
        RTS
@@ -5359,18 +5383,18 @@ ENDIF
        BPL chunk_40_sta_c274_y_dey_bpl
        RTS
 
-.clc_lda_b6_adc_1a_sta_b6
+.advance_zp_dir_ptr_low_by_dir_entry_size
        CLC
-.lda_b6_adc_1a_sta_b6
-       LDA &B6
-       ADC #&1A
-       STA &B6
+.lda_zp_dir_ptr_adc_1a_sta_zp_dir_ptr
+       LDA zp_dir_ptr
+       ADC #dir_entry_size
+       STA zp_dir_ptr
        RTS
 
-.lda_b6_y_ora_80_sta_b6_y
-       LDA (&B6),Y
+.lda_zp_dir_ptr_y_ora_80_sta_zp_dir_ptr_y
+       LDA (zp_dir_ptr),Y
        ORA #&80
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        RTS
 
 .chunk_32_a
@@ -5426,7 +5450,7 @@ ENDIF
        LDX #&03
 .chunk_61_loop
        LDA &C215,X
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        DEY
        DEX
        BPL chunk_61_loop
@@ -5969,16 +5993,16 @@ ENDIF
        LDA &B5
        STA abs_workspace_some_other_sector_num+1
        LDY #&0E
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        LDX #&02
 .LA40E INY
-       AND (&B6),Y
+       AND (zp_dir_ptr),Y
        DEX
        BPL LA40E
        INC A
        BNE LA42A
-       LDX &B6
-       LDY &B7
+       LDX zp_dir_ptr
+       LDY zp_dir_ptr+1
        LDA #&40
        JSR LB213
        STA &C332
@@ -5987,11 +6011,11 @@ ENDIF
        JMP &FFF7
 ;;
 .LA42A LDY #&0B
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        INY
-       AND (&B6),Y
+       AND (zp_dir_ptr),Y
        INY
-       AND (&B6),Y
+       AND (zp_dir_ptr),Y
        INC A
        BNE LA43F
        JSR generate_error_inline
@@ -6007,13 +6031,13 @@ ENDIF
        STY &B9
        JSR L8BBE
        JSR chunk_26
-       ;; We don't need this LDY #&00 now we have ORA (&B6) not ORA (&B6),Y.
+       ;; We don't need this LDY #&00 now we have ORA (zp_dir_ptr) not ORA (zp_dir_ptr),Y.
        ;; LA45C does JSR L8C1B which immediately does LDY. L8BFB does JSR generate_error_inline
        ;; which does JSR get_fsm_and_root_from_0_if_context_not_minus_1. get_fsm_and_root_from_0_if_context_not_minus_1 will either LDY inside
        ;; scsi_op_load_fsm, or it will hit L89EF from where it will LDY
        ;; #&0A or hit L8A22 which will LDY.
        ;; LDY #&00
-       ORA (&B6)
+       ORA (zp_dir_ptr)
        BMI LA45C
        JMP L8BFB
 ;;
@@ -6148,7 +6172,7 @@ ENDIF
        JMP error_file_not_found_or_bad_name
 ;;
 .LA555 
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
        BPL LA580
        PLX
@@ -6177,7 +6201,7 @@ ENDIF
        JSR L8E01
        PLP
        BNE LA5A5
-       LDA &B6
+       LDA zp_dir_ptr
        LDY #&03
 .LA59C STA abs_workspace_another_sector_num,Y
        LDA &C313,Y
@@ -6196,7 +6220,7 @@ ENDIF
        JSR L8FE8
        JSR L8D1B
        LDY #&03
-       LDA &B6
+       LDA zp_dir_ptr
 .LA5CA CMP abs_workspace_another_sector_num,Y
        BNE LA625
        LDA &C313,Y
@@ -6224,12 +6248,12 @@ ENDIF
        INC &B5
        BNE LA5DE
 .LA5FA LDY #&09
-.LA5FC LDA (&B6),Y
+.LA5FC LDA (zp_dir_ptr),Y
        AND #&80
        STA &C22B
        JSR chunk_57
        ORA &C22B
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        DEY
        BPL LA5FC
 ;;
@@ -6237,7 +6261,7 @@ ENDIF
 {
        JSR L8F91
 .LA6BB 
-       JSR ldy_3_lda_b6_y
+       JSR ldy_3_lda_zp_dir_ptr_y
        BPL chunk_66_exit
 ;;
        LDY #&02
@@ -6269,11 +6293,11 @@ ENDIF
 .LA625 LDA &C237
        BNE LA622
        LDY #&09
-       JSR lda_b6_y_ora_80_sta_b6_y
+       JSR lda_zp_dir_ptr_y_ora_80_sta_zp_dir_ptr_y
        JSR L8F91
        LDY #&0A
        LDX #&07
-.LA639 LDA (&B6),Y
+.LA639 LDA (zp_dir_ptr),Y
        STA &C238,Y
        INY
        DEX
@@ -6283,13 +6307,13 @@ ENDIF
        STZ &C24C
        STZ &C24D
        LDX #&03
-.LA650 LDA (&B6),Y
+.LA650 LDA (zp_dir_ptr),Y
        STA &C23C,Y
        INY
        DEX
        BPL LA650
        LDY #&00
-.LA65B LDA (&B6),Y
+.LA65B LDA (zp_dir_ptr),Y
        ROL A
        ROL &C25D
        INY
@@ -6298,7 +6322,7 @@ ENDIF
        JSR LA394
        LDY #&18
        LDX #&02
-.LA66D LDA (&B6),Y
+.LA66D LDA (zp_dir_ptr),Y
        STA &C23A,X
        DEY
        DEX
@@ -6307,11 +6331,11 @@ ENDIF
        JSR lda_40_sta_b8_lda_c2_sta_b9
        JSR chunk_31
        LDY #&03
-.LA689 LDA (&B6),Y
+.LA689 LDA (zp_dir_ptr),Y
        ASL A
        ROR &C25D
        ROR A
-       STA (&B6),Y
+       STA (zp_dir_ptr),Y
        DEY
        BPL LA689
        JSR L8E96
@@ -6466,9 +6490,9 @@ ENDIF
        LDA &C292
        STA &B5
        LDA &C294
-       STA &B7
+       STA zp_dir_ptr+1
        LDA &C293
-       STA &B6
+       STA zp_dir_ptr
        JSR chunk_59
 .LA80D LDA &C26C,Y
        JSR chunk_60
@@ -6520,7 +6544,7 @@ ENDIF
        JSR LA7EC
 .LA8AF JSR chunk_26
        DEY
-       ORA (&B6),Y
+       ORA (zp_dir_ptr),Y
        BPL LA8C7
 .LA8B8 BIT &FF
        BPL LA8BF
@@ -6533,13 +6557,13 @@ ENDIF
 .LA8C7 JSR chunk_18
        JSR L8C6D
        LDY #&16
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA abs_workspace_some_other_sector_num
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA abs_workspace_some_other_sector_num+1
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        ORA abs_workspace_current_drive
        STA abs_workspace_some_other_sector_num+2
        LDX #&00
@@ -7751,48 +7775,48 @@ ENDIF
 ;;
 .LB2AA DEX
        BPL LB277
-       JSR ldy_0_lda_b6_y
+       JSR ldy_0_lda_zp_dir_ptr_y
        BMI LB2B6
        JMP L8BFB
 ;;
 .LB2B6 LDY #&12
        LDX &CF
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C352,X
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C348,X
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C33E,X
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C334,X
 .LB2D1 LDY #&12
        LDX &CF
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C3A2,X
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C398,X
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C38E,X
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C384,X
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C3CA,X
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C3C0,X
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        ORA abs_workspace_current_drive
        STA &C3B6,X
        INY
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        STA &C3F2,X
        LDA abs_workspace_current_directory_sector_num
        STA &C3E8,X
@@ -7826,7 +7850,7 @@ ENDIF
        BNE LB336
        JSR L8D2C
        LDY #&01
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        BMI LB358
 .LB355 JMP L8BFB
 ;;
@@ -7837,7 +7861,7 @@ ENDIF
        BNE LB36F
        JSR L8D1B
        LDY #&01
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
        BPL LB355
        BRA LB3CD
 ;;
@@ -8145,9 +8169,9 @@ ENDIF
        BCC LB5F0
        JMP LB8DA
 ;;
-.ldy_0_lda_b6_y
+.ldy_0_lda_zp_dir_ptr_y
        LDY #&00
-       LDA (&B6),Y
+       LDA (zp_dir_ptr),Y
 .LB5EF RTS
 
 ;;
