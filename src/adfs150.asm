@@ -76,10 +76,12 @@ abs_workspace_control_block = &C215
 ;; TODO: What's the difference between abs_workspace_current_drive and
 ;; abs_workspace_current_drive2?
 abs_workspace_current_drive2 = &C26F
+abs_workspace_time = &C2C3 ;; 5 bytes
+abs_workspace_time_delta = &C2C8 ;; 5 bytes
+abs_workspace_screen_flag = &C2D7 ;; 0 or a stored copy of ACCCON
 abs_workspace_cmos_byte_copy = &C2D8
 abs_workspace_something = &C300
 abs_workspace_something_else = &C30A
-abs_workspace_screen_flag = &C2D7 ;; 0 or a stored copy of ACCCON
 
 ;; init_context_ffffffff implies the 'context' lives at &C22C-&C237 inclusive
 ;; and &C314-&C31F inclusive. So these are part of the context:
@@ -111,6 +113,11 @@ awe_scsi_error = 3   ;;   &C2D3 SCSI error number
 awe_channel_num = 4  ;;   &C2D4 Channel number if &C2D3.b7=1
 awe_end = 4 
 ;;
+
+;; OS entry points and associated constants
+osword = &FFF1
+osbyte = &FFF4
+osword_read_system_clock = 1
 
 ;; Memory mapped hardware
 acccon = &FE34
@@ -951,7 +958,7 @@ ENDIF
 .acknowledge_escape
 {
 .L82CC LDA #&7E
-       JSR &FFF4        ;; Acknowledge Escape state
+       JSR osbyte        ;; Acknowledge Escape state
        JSR generate_error_inline        ;; Generate an error
        EQUB &11         ;; ERR=17
        EQUS "Escape"    ;; REPORT="Escape"
@@ -1273,7 +1280,7 @@ ENDIF
 ;; -----------
 .L84C4 LDY #&FF
 .L84C6 LDX #&00
-       JMP &FFF4        ;; Osbyte A,&00,&FF
+       JMP osbyte        ;; Osbyte A,&00,&FF
 ;;
 ;; Close Spool or Exec if ADFS channel
 ;; -----------------------------------
@@ -1822,14 +1829,16 @@ ENDIF
        ;; TODO: Is the next line mostly redundant? Do we actually use the X=0
        ;; result? If not, we could probably replace this with LDA (&B4),Y
        JSR lda_and_classify_b4_y
-       CMP #&2E
+       CMP #'.'
        BNE L8910
        JSR inc_b4_b5_by_1
 .L88EF LDY #&00
+       ;; TODO: Is the next line mostly redundant? Do we actually use the X=0
+       ;; result? If not, we could probably replace this with LDA (&B4),Y
        JSR lda_and_classify_b4_y
        AND #&FD
-       CMP #&24
-       BEQ L8896
+       CMP #&24		       
+       BEQ L8896	       ;; branch if (&B4) is '$' or '&'
        JSR LB546
 .L88FD JSR L9456
        BNE L892A
@@ -3292,7 +3301,7 @@ ENDIF
        CMP #&04
        BEQ L9423
        LDA #&86
-       JSR &FFF4
+       JSR osbyte
        TXA
        BNE L9420
        LDA #&0B
@@ -4084,7 +4093,7 @@ ENDIF
 ;;
 .L9A7F LDA #&A1         ;; Read CMOS
        LDX #&0B         ;; Location 11 - ADFS settings
-       JSR &FFF4        ;; Read CMOS byte
+       JSR osbyte        ;; Read CMOS byte
        TYA              ;; Transfer CMOS byte to A
        RTS
 ;;
@@ -4293,7 +4302,7 @@ ENDIF
 .L9B54 TYA
        PHA              ;; Save Boot flag
        LDA #&7A
-       JSR &FFF4        ;; Scan keyboard
+       JSR osbyte        ;; Scan keyboard
        INX              ;; No key pressed?
        BEQ L9B74        ;; Yes, jump to select FS
        DEX
@@ -4373,7 +4382,7 @@ ENDIF
        LDA #&8F
        LDX #&0F
        LDY #&FF
-       JSR &FFF4        ;; Claim Vectors
+       JSR osbyte        ;; Claim Vectors
        LDA #&FF		;; Set a flag
        STA &C2E4
        JSR LA767        ;; Check workspace checksum
@@ -5445,14 +5454,14 @@ ENDIF
        BCC LA053
        CPX #&3A
        BCS LA053
-       JSR &FFF4
+       JSR osbyte
        LDX #&00
 .LA053 PLA
        PHA
        JSR &FFE3
        LDA #&C7
        LDY #&FF
-       JSR &FFF4
+       JSR osbyte
        PLA
        PLY
        PLX
@@ -5756,7 +5765,7 @@ ENDIF
        CMP #&21
        BCS LA2EB
        LDA #&84
-       JSR &FFF4
+       JSR osbyte
        TXA
        BNE error_bad_compact
        TYA
@@ -6507,10 +6516,10 @@ ENDIF
        DEY
        BPL LA91A
        LDA #&83
-       JSR &FFF4
+       JSR osbyte
        STY &C260
        LDA #&84
-       JSR &FFF4
+       JSR osbyte
        TYA
        SEC
        SBC &C260
@@ -7942,7 +7951,7 @@ ENDIF
        STA &C321,X
        LDA &C1FC
        STA &C322,X
-.LB4DF JSR LB510
+.LB4DF JSR update_time_and_delta
 .LB4E2 JSR chunk_12
        LDA &C1FB
        CMP &C321,X
@@ -7958,20 +7967,25 @@ ENDIF
        EQUB &C8         ;; ERR=200
        EQUS "Disc changed"
        EQUB &00
-;;
-.LB510 LDA #&01
-       LDX #&C8
-       LDY #&C2
-       JSR &FFF1
+
+;; now = TIME
+;; abs_workspace_time_delta = now - abs_workspace_time
+;; abs_workspace_time = now
+.update_time_and_delta
+{
+.LB510 LDA #osword_read_system_clock
+       LDX #<abs_workspace_time_delta
+       LDY #>abs_workspace_time_delta
+       JSR osword
        LDX #&00
        LDY #&04
        SEC
-.LB51E LDA &C2C8,X
+.LB51E LDA abs_workspace_time_delta,X
        PHA
-       SBC &C2C3,X
-       STA &C2C8,X
+       SBC abs_workspace_time,X
+       STA abs_workspace_time_delta,X
        PLA
-       STA &C2C3,X
+       STA abs_workspace_time,X
        INX
        DEY
        BPL LB51E
@@ -7983,9 +7997,10 @@ ENDIF
        CMP #&02
        BCC LB545
 .LB542 STY &C2C2
+}
 .LB545 RTS
 ;;
-.LB546 JSR LB510
+.LB546 JSR update_time_and_delta
        JSR chunk_12
        JSR LB560
        EOR &C2C2
@@ -8006,7 +8021,7 @@ ENDIF
        STA &C2CD
        PHX
        PHY
-       JSR LB510
+       JSR update_time_and_delta
        LDA &C2CD
        JSR LB5C5
        JSR LB560
@@ -8715,7 +8730,7 @@ IF INCLUDE_FLOPPY
        STZ &C2E8
        LDX #&0B
        LDA #&A1
-       JSR &FFF4
+       JSR osbyte
        TYA
        PHA
        AND #&02
@@ -8732,7 +8747,7 @@ IF INCLUDE_FLOPPY
        LDA #&8F
        LDX #&0C
        LDY #&FF
-       JSR &FFF4        ;; Claim NMI space
+       JSR osbyte        ;; Claim NMI space
        STY &C2E1        ;; Store previous owner's ID
        LDA &C2E8
 
@@ -9235,7 +9250,7 @@ endif
        LDY &C2E1        ;; Get previous owner's ID
        LDA #&8F
        LDX #&0B
-       JSR &FFF4        
+       JSR osbyte        
 
 .LBFE9 JSR TUBE_RELEASE        ;; Release Tube, restore screen
        LDX zp_control_block_ptr
