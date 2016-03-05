@@ -1330,7 +1330,7 @@ ENDIF
        INX
        INX
        STX &B2
-       LDY #&02
+       LDY #sector_number_max_offset
 .L84FB JSR chunk_51
        CMP abs_workspace_another_sector_num,Y
        BCS L8508
@@ -2582,7 +2582,7 @@ restricted_character_list_last_byte_offset = &05
        DEX
        BPL chunk_30_loop1
        LDY #&18
-       LDX #&02
+       LDX #sector_number_max_offset
 .chunk_30_loop2
        LDA (&B6),Y
        STA abs_workspace_another_sector_num,X
@@ -3028,7 +3028,7 @@ ENDIF
        BEQ L91A9
        CPX abs_workspace_current_drive
        BNE check_for_cant_delete_library
-.L91A9 LDX #&02
+.L91A9 LDX #sector_number_max_offset
 .L91AB LDA abs_workspace_another_sector_num,X
        CMP abs_workspace_current_directory2_sector_num,X
        BNE check_for_cant_delete_library
@@ -3045,7 +3045,7 @@ ENDIF
 .L91CB LDA abs_workspace_current_drive
        CMP abs_workspace_library_drive
        BNE L91F9
-       LDX #&02
+       LDX #sector_number_max_offset
 .L91D5 LDA abs_workspace_another_sector_num,X
        CMP abs_workspace_library_directory,X
        BNE L91F9
@@ -3060,7 +3060,7 @@ ENDIF
 .L91F9 LDA abs_workspace_current_drive
        CMP abs_workspace_previous_drive
        BNE L921B
-       LDX #&02
+       LDX #sector_number_max_offset
 .L9203 LDA abs_workspace_another_sector_num,X
        CMP abs_workspace_previous_directory,X
        BNE L921B
@@ -3506,7 +3506,7 @@ ENDIF
        BNE L955E
        LDA abs_workspace_current_drive
 .L955E STA abs_workspace_previous_drive
-       LDY #&02
+       LDY #sector_number_max_offset
 .L9563 LDA abs_workspace_current_directory2_sector_num,Y
        STA abs_workspace_previous_directory,Y
        DEY
@@ -3605,7 +3605,7 @@ ENDIF
        BEQ L9654
        INC A
        BNE L966C
-.L9654 LDY #&02
+.L9654 LDY #sector_number_max_offset
 .L9656 LDA abs_workspace_some_other_sector_num,Y
        CMP abs_workspace_current_directory2_sector_num,Y
        BNE L966C
@@ -3618,13 +3618,13 @@ ENDIF
 .L966C LDA abs_workspace_library_drive
        CMP abs_workspace_current_drive
        BNE L968C
-       LDY #&02
+       LDY #sector_number_max_offset
 .L9676 LDA abs_workspace_some_other_sector_num,Y
        CMP abs_workspace_library_directory,Y
        BNE L968C
        DEY
        BPL L9676
-       LDY #&02
+       LDY #sector_number_max_offset
 .L9683 LDA &C2A8,Y
        STA abs_workspace_library_directory,Y
        DEY
@@ -3632,13 +3632,13 @@ ENDIF
 .L968C LDA abs_workspace_previous_drive
        CMP abs_workspace_current_drive
        BNE L96AC
-       LDY #&02
+       LDY #sector_number_max_offset
 .L9696 LDA abs_workspace_some_other_sector_num,Y
        CMP abs_workspace_previous_directory,Y
        BNE L96AC
        DEY
        BPL L9696
-       LDY #&02
+       LDY #sector_number_max_offset
 .L96A3 LDA &C2A8,Y
        STA abs_workspace_previous_directory,Y
        DEY
@@ -3804,7 +3804,7 @@ ENDIF
        STA &B6
        LDA &B5
        STA &B7
-       LDY #&02
+       LDY #sector_number_max_offset
 .L9828 LDA abs_workspace_some_other_sector_num,Y
        STA &C2AB,Y
        DEY
@@ -3818,7 +3818,7 @@ ENDIF
        INX
        INX
        STX &B2
-       LDY #&02
+       LDY #sector_number_max_offset
 .L9844 JSR chunk_51
        CMP abs_workspace_some_other_sector_num,Y
        BCS L9851
@@ -5119,7 +5119,7 @@ ENDIF
        JSR ldy_2_lda_c314_y_sta_c22c_y_dey_bpl
 .chunk_17_nojsr
        JSR chunk_16
-       LDX #&02
+       LDX #sector_number_max_offset
        LDY #&16
 .chunk_17_loop
        LDA (&B6),Y
@@ -7316,7 +7316,7 @@ ENDIF
        STZ &C2B5
 .LAE6D LDA abs_workspace_saved_current_drive
        STA &C2BF
-       LDX #&02
+       LDX #sector_number_max_offset
 .LAE75 LDA abs_workspace_current_directory2_sector_num,X
        STA &C2BC,X
        DEX
@@ -7455,7 +7455,7 @@ ENDIF
        LDA #&09
        STA &C261
        LDX #&00
-       LDY #&02
+       LDY #sector_number_max_offset
 .LAFC3 LDA abs_workspace_another_sector_num,Y
        STA abs_workspace_some_other_sector_num,Y
        CMP &C23A,Y
@@ -7568,7 +7568,7 @@ ENDIF
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
 .LB0DA LDA &C2BF
        STA abs_workspace_saved_current_drive
-       LDX #&02
+       LDX #sector_number_max_offset
 .LB0E2 LDA &C2BC,X
        STA abs_workspace_current_directory2_sector_num,X
        DEX
