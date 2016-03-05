@@ -91,6 +91,7 @@ abs_workspace_something_else = &C30A
        abs_workspace_saved_current_drive = &C22F
        abs_workspace_current_directory_sector_num = &C314 ;; 3 bytes
        abs_workspace_current_drive = &C317 ;; &FF=no current drive
+       abs_workspace_library_directory = &C318 ;; 3 bytes (sector number); &C31A (high byte)=&FF->no library directory
        abs_workspace_library_drive = &C31B
        abs_workspace_previous_directory = &C31C ;; 3 bytes (sector number); &C31E (high byte)=&FF->no previous directory
        abs_workspace_previous_drive = &C31F ;; &FF=no previous drive
@@ -2987,7 +2988,7 @@ ENDIF
        BNE L91F9
        LDX #&02
 .L91D5 LDA &C234,X
-       CMP &C318,X
+       CMP abs_workspace_library_directory,X
        BNE L91F9
        DEX
        BPL L91D5
@@ -3553,13 +3554,13 @@ ENDIF
        BNE L968C
        LDY #&02
 .L9676 LDA &C2A2,Y
-       CMP &C318,Y
+       CMP abs_workspace_library_directory,Y
        BNE L968C
        DEY
        BPL L9676
        LDY #&02
 .L9683 LDA &C2A8,Y
-       STA &C318,Y
+       STA abs_workspace_library_directory,Y
        DEY
        BPL L9683
 .L968C LDA abs_workspace_previous_drive
@@ -4406,14 +4407,16 @@ IF PATCH_IDE OR PATCH_SD
        JSR chunk_38     ;; If HD, look for $.Library
        BEQ L9C7A
        BNE L9C41
+       ;; TODO: Are the following two bytes just junk?
        EQUB &1B
        EQUB &C3
 ELSE
-       LDA &C318        ;; Is LIB set to ":0.$"?
-       CMP #&02
+       LDA abs_workspace_library_directory        ;; Is LIB set to ":0.$"?
+       CMP #&02	        ;; root directory is sector 2
        BNE L9C7A
-       LDA &C319
-       ORA &C31A
+       ;; the other two bytes of directory and drive are all zero for ":0.$"
+       LDA abs_workspace_library_directory+1
+       ORA abs_workspace_library_directory+2
        ORA abs_workspace_library_drive
 ENDIF
        BNE L9C7A        ;; No, don't look for Library
@@ -4432,7 +4435,7 @@ ENDIF
 .L9C5B LDX #&02
        LDY #&18
 .L9C5F LDA (&B6),Y
-       STA &C318,X
+       STA abs_workspace_library_directory,X
        DEY
        DEX
        BPL L9C5F
@@ -5646,7 +5649,7 @@ ENDIF
        CMP abs_workspace_current_drive2        ;; Compare with ???
        BNE RTS1         ;; If different, jump past
        LDA #&FF
-       STA &C31A        ;; Set library to &FFFFxxxx
+       STA abs_workspace_library_directory+2 ;; Set library to &FFFFxxxx
        STA abs_workspace_library_drive
        LDX #&0A
        BRA set_unset_c300_x        ;; Set library name to "Unset"
@@ -5971,15 +5974,15 @@ ENDIF
        BPL LA487
        LDY #&03
 .LA492 LDA &C314,Y
-       STA &C318,Y
+       STA abs_workspace_library_directory,Y
        DEY
        BPL LA492
 .LA49B JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
-.LA49E LDY #&03
+.LA49E LDY #&03 ;; note abs_workspace_library_directory+3==abs_workspace_library_drive
 .LA4A0 LDA &C314,Y
        STA &C230,Y
-       LDA &C318,Y
+       LDA abs_workspace_library_directory,Y
        jsr sta_c22c_y_dey
        BPL LA4A0
        BMI LA49B
