@@ -79,6 +79,7 @@ abs_workspace_current_drive2 = &C26F
 abs_workspace_cmos_byte_copy = &C2D8
 abs_workspace_something = &C300
 abs_workspace_something_else = &C30A
+abs_workspace_screen_flag = &C2D7 ;; 0 or a stored copy of ACCCON
 
 ;; init_context_ffffffff implies the 'context' lives at &C22C-&C237 inclusive
 ;; and &C314-&C31F inclusive. So these are part of the context:
@@ -110,6 +111,11 @@ awe_scsi_error = 3   ;;   &C2D3 SCSI error number
 awe_channel_num = 4  ;;   &C2D4 Channel number if &C2D3.b7=1
 awe_end = 4 
 ;;
+
+;; Memory mapped hardware
+acccon = &FE34
+acccon_d = &01 ;; D bit - 0 = use shadow RAM for screen, 1 = use main RAM for screen
+acccon_x = &04 ;; X bit - 0 = normal RAM in main memory, 1 = shadow RAM in main memory
 
 scsi_command_read = &08
 scsi_command_write = &0A
@@ -206,37 +212,42 @@ ENDIF
 ;; Release Tube if used, and restore Screen settings
 ;; -------------------------------------------------
 .TUBE_RELEASE
+{
 .L803A BIT zp_adfs_status_flag
        BVC L8047        ;; Tube not being used
        LDA #&84         ;; ADFS Tube ID=&04, &80=Release
        JSR &0406        ;; Release Tube
        LDA #as_tube_being_used
        TRB zp_adfs_status_flag ;; Reset Tube being used flag
-.L8047 LDA &C2D7        ;; Screen memory used?
+.L8047 LDA abs_workspace_screen_flag        ;; Screen memory used?
        BEQ L804F        ;; Exit if screen unchanged
-       STA &FE34        ;; Restore screen setting
-.L804F STZ &C2D7        ;; Clear screen flag
+       STA acccon       ;; Restore screen setting
+.L804F STZ abs_workspace_screen_flag        ;; Clear screen flag
        RTS
+}
 ;;
 ;; Check for screen memory
 ;; -----------------------
 ;; Put shadow screen memory into main memory if i/o address specifies &FFFExxxx
 ;;
+.check_for_screen_memory
+{
 .L8053 PHY              ;; Save Y
-       LDY &FE34        ;; Get current Screen setting
-       STY &C2D7        ;; Save it
+       LDY acccon       ;; Get current Screen setting
+       STY abs_workspace_screen_flag        ;; Save it
        INX              ;; Address=&FFxxxxxx?
        BNE L806D        ;; Not I/O memory, exit
        CMP #&FE         ;; Address=&FFFExxxx?
        BNE L806D        ;; Not screen memory, exit
        TYA              ;; Get current screen state into A
-       ROR A            ;; Move to Cy
-       LDA #&04
-       TRB &FE34        ;; Put normal RAM in memory
+       ROR A            ;; Move ACCCON D bit to carry
+       LDA #acccon_x
+       TRB acccon       ;; Put normal RAM in memory
        BCC L806D        ;; Exit if shadow screen being displayed
-       TSB &FE34        ;; Put shadow RAM in memory
+       TSB acccon       ;; Put shadow RAM in memory
 .L806D PLY              ;; Restore Y
        RTS
+}
 ;;
 ;;
 ;; DRIVE ACCESS ROUTINES
@@ -406,7 +417,7 @@ ENDIF
        TAX              ;; X=Addr3 - I/O or Language
        DEY
        LDA (zp_control_block_ptr),Y      ;; Get Addr2 - Screen bank
-       JSR L8053        ;; Set I/O and Screen settings
+       JSR check_for_screen_memory        ;; Set I/O and Screen settings
 ;;
 ;; No hard drive present, drive 0 to 7 map onto floppies 0 to 3.
 ;; When hard drives are present, drives 4 to 7 map onto floppies 0 to 3.
@@ -562,7 +573,7 @@ ELIF PATCH_IDE
        JSR GetResult    ;; Get IDE result
 .CommandExit
        PHA              ;; Release Tube
-       JSR L803A
+       JSR TUBE_RELEASE
        PLA
        LDX zp_control_block_ptr          ;; Restore registers, set EQ flag
        LDY zp_control_block_ptr+1
@@ -688,7 +699,7 @@ ELSE
        STA &FEE5        ;; Write to Tube
        BRA L817C        ;; Loop for next byte
 ;;
-.L81AD JSR L803A        ;; Release Tube and restore screen
+.L81AD JSR TUBE_RELEASE        ;; Release Tube and restore screen
 .L81B0 JSR L8332        ;; Wait for SCSI data ready
        LDA &FC40        ;; Get result byte
        JSR L8332        ;; Wait for SCSI data ready
@@ -1164,10 +1175,10 @@ ENDIF
 .L840F LDA &C2CE
        BNE L8417
        JSR LA7D4
-.L8417 LDA #&00 ; TODO: possibly can use STZ here - L803A does BIT, but I *think* only the V flag is used which doesn't depend on A
+.L8417 LDA #&00 ; TODO: possibly can use STZ here - TUBE_RELEASE does BIT, but I *think* only the V flag is used which doesn't depend on A
        STA &0100
        STA &0101,Y
-       JSR L803A
+       JSR TUBE_RELEASE
        LDA &0101
        CMP #&C7
        BNE L843D
@@ -2080,7 +2091,7 @@ ENDIF
        STY zp_control_block_ptr+1
        LDX &C219        ;; Get Addr3
        LDA &C218        ;; Get Addr2
-       JSR L8053        ;; Check for shadow screen memory
+       JSR check_for_screen_memory        ;; Check for shadow screen memory
        LDA abs_workspace_current_drive        ;; Get current drive
        ORA &C21B        ;; OR with drive number
        STA &C21B        ;; Store back into control block
@@ -4333,7 +4344,7 @@ ENDIF
        JSR L9A4C        ;; Tell current FS new FS taking over
        LDA #default_retries
        STA abs_workspace_default_retries
-       STZ &C2D7
+       STZ abs_workspace_screen_flag
 IF PATCH_SD
        STZ mmcstate%    ;; mark the mmc system as un-initialized
        JSR initializeDriveTable
@@ -4992,7 +5003,7 @@ ENDIF
 .chunk_7
        LDA &C2BA
        LDX &C2BB
-       JSR L8053
+       JSR check_for_screen_memory
        LDA &C2BA
        CMP #&FE
        RTS
@@ -8409,7 +8420,7 @@ ENDIF
        ROL A
        ROL A
        JSR LB8A5
-.LB925 JSR L803A
+.LB925 JSR TUBE_RELEASE
        JMP LB75E
 ;;
 .LB92B JSR chunk_47
@@ -8545,7 +8556,7 @@ ENDIF
        CPY &C2B7
        BNE LBA1C
        PLP
-       JMP L803A
+       JMP TUBE_RELEASE
 ;;
 IF INCLUDE_FLOPPY
 ;;
@@ -9226,7 +9237,7 @@ endif
        LDX #&0B
        JSR &FFF4        
 
-.LBFE9 JSR L803A        ;; Release Tube, restore screen
+.LBFE9 JSR TUBE_RELEASE        ;; Release Tube, restore screen
        LDX zp_control_block_ptr
        LDA &C2E3        ;; Get error
        BEQ LBFFA        ;; If zero, jump to return Ok

@@ -78,7 +78,7 @@
 
 .CommandExit
        PHA              ;; Release Tube
-       JSR L803A
+       JSR TUBE_RELEASE
        PLA
        LDX &B0          ;; Restore registers, set EQ flag
        LDY &B1
