@@ -96,6 +96,10 @@ abs_workspace_something_else = &C30A
        ;; currently selected drive when a pathname temporarily overrides it we
        ;; saved the previous value of abs_workspace_current_drive in
        ;; abs_workspace_saved_current_drive. This could be completely wrong.
+       ;; TODO: We seem to have at least two things which are the current
+       ;; directory sector number: abs_workspace_current_directory2_sector_num
+       ;; and abs_workspace_current_directory_sector_num
+       abs_workspace_current_directory2_sector_num = &C22C ;; 3 bytes
        abs_workspace_saved_current_drive = &C22F
        abs_workspace_some_sector_num = &C231 ;; 3 bytes
        abs_workspace_another_sector_num = &C234 ;; 3 bytes
@@ -1988,7 +1992,7 @@ ENDIF
        LDA &C22D
        STA abs_workspace_current_directory_sector_num+1
        STA abs_workspace_control_block + cb_sector_b8_15
-       LDA &C22C
+       LDA abs_workspace_current_directory2_sector_num
        STA abs_workspace_current_directory_sector_num
        STA abs_workspace_control_block + cb_sector_b0_7
        LDA #&FF
@@ -2991,9 +2995,9 @@ ENDIF
 ;;
 .L9131 JSR L8D1B
        JSR ldy_3_lda_b6_y
-       BPL L9177
+       BPL check_for_cant_delete_csd
        LDY #&03
-.L913C LDA &C22C,Y
+.L913C LDA abs_workspace_current_directory2_sector_num,Y
        STA &C230,Y
        DEY
        BPL L913C
@@ -3004,12 +3008,14 @@ ENDIF
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
        JSR LA4B1
        PLP
-       BEQ L9177
+       BEQ check_for_cant_delete_csd
        JSR generate_error_inline
        EQUB &B4         ;; ERR=180
        EQUS "Dir not empty"
        EQUB &00
 ;;
+.check_for_cant_delete_csd
+{
 .L9177 
        JSR chunk_30
        JSR ldy_3_lda_b6_y
@@ -3021,7 +3027,7 @@ ENDIF
        BNE check_for_cant_delete_library
 .L91A9 LDX #&02
 .L91AB LDA abs_workspace_another_sector_num,X
-       CMP &C22C,X
+       CMP abs_workspace_current_directory2_sector_num,X
        BNE check_for_cant_delete_library
        DEX
        BPL L91AB
@@ -3029,6 +3035,7 @@ ENDIF
        EQUB &96         ;; ERR=150
        EQUS "Can't delete CSD"
        EQUB &00
+}
 ;;
 .check_for_cant_delete_library
 {
@@ -3497,7 +3504,7 @@ ENDIF
        LDA abs_workspace_current_drive
 .L955E STA abs_workspace_previous_drive
        LDY #&02
-.L9563 LDA &C22C,Y
+.L9563 LDA abs_workspace_current_directory2_sector_num,Y
        STA abs_workspace_previous_directory,Y
        DEY
        BPL L9563
@@ -3597,7 +3604,7 @@ ENDIF
        BNE L966C
 .L9654 LDY #&02
 .L9656 LDA abs_workspace_some_other_sector_num,Y
-       CMP &C22C,Y
+       CMP abs_workspace_current_directory2_sector_num,Y
        BNE L966C
        DEY
        BPL L9656
@@ -5368,13 +5375,13 @@ ENDIF
 .chunk_32
 .chunk_32_loop
        LDA &C230,Y
-       STA &C22C,Y
+       STA abs_workspace_current_directory2_sector_num,Y
        DEY
        BPL chunk_32_loop
        RTS
 
 .sta_c22c_y_dey
-       STA &C22C,Y
+       STA abs_workspace_current_directory2_sector_num,Y
        DEY
        RTS
 
@@ -6045,7 +6052,7 @@ ENDIF
 ;;
 .LA4D5 LDY #&03
 .LA4D7 LDA abs_workspace_previous_directory,Y ;; note abs_workspace_previous_directory+3==abs_workspace_previous_drive
-       STA &C22C,Y
+       STA abs_workspace_current_directory2_sector_num,Y
        LDA &C314,Y
        STA abs_workspace_previous_directory,Y
        DEY
@@ -7250,7 +7257,7 @@ ENDIF
        AND #&E0
        STA abs_workspace_saved_current_drive
        LDA &C3E8,X
-       STA &C22C
+       STA abs_workspace_current_directory2_sector_num
        LDA &C3DE,X
        STA &C22D
        LDA &C3D4,X
@@ -7304,7 +7311,7 @@ ENDIF
 .LAE6D LDA abs_workspace_saved_current_drive
        STA &C2BF
        LDX #&02
-.LAE75 LDA &C22C,X
+.LAE75 LDA abs_workspace_current_directory2_sector_num,X
        STA &C2BC,X
        DEX
        BPL LAE75
@@ -7557,7 +7564,7 @@ ENDIF
        STA abs_workspace_saved_current_drive
        LDX #&02
 .LB0E2 LDA &C2BC,X
-       STA &C22C,X
+       STA abs_workspace_current_directory2_sector_num,X
        DEX
        BPL LB0E2
        RTS
