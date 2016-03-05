@@ -96,6 +96,7 @@ abs_workspace_something_else = &C30A
        ;; saved the previous value of abs_workspace_current_drive in
        ;; abs_workspace_saved_current_drive. This could be completely wrong.
        abs_workspace_saved_current_drive = &C22F
+       abs_workspace_some_sector_num = &C231 ;; 3 bytes
        abs_workspace_current_directory_sector_num = &C314 ;; 3 bytes
        abs_workspace_current_drive = &C317 ;; &FF=no current drive, otherwise top 3 bits are drive number
        abs_workspace_library_directory = &C318 ;; 3 bytes (sector number); &C31A (high byte)=&FF->no library directory
@@ -114,7 +115,12 @@ abs_workspace_drive_disc_ids = &C321 ;; 16 bytes
        ;; ...
        ;; 2 bytes containing disc ID for drive 7
 
-abs_workspace_current_directory = &C400
+abs_workspace_current_directory = &C400 ;; 5*256 bytes
+abs_workspace_current_directory_s0 = &C400
+abs_workspace_current_directory_s1 = &C500
+abs_workspace_current_directory_s2 = &C600
+abs_workspace_current_directory_s3 = &C700
+abs_workspace_current_directory_s4 = &C800
 abs_workspace_park = &C900
 
 ;; ADFS Error Information:
@@ -3348,22 +3354,27 @@ ENDIF
        BRA L9440
 ;;
 .L9456 
+{
        jsr ldy_0_lda_b4_y
        AND #&7F
-       CMP #&5E
+       CMP #'^'
        BNE L946A
+       ;; TODO: It's tempting to speculate this is setting &B6 to point to the
+       ;; parent directory, but the documentation I have suggests the parent
+       ;; pointer is at &D6-&D8 in sector 4 of the directory, not &C0.
        LDA #&C0
        STA &B6
-       LDA #&C8
+       LDA #>abs_workspace_current_directory_s4
        STA &B7
-       BNE L9476
-.L946A CMP #&40
+       BNE L9476 ;; this will always branch
+.L946A CMP #'@'
        BNE L9477
        LDA #&FE
        STA &B6
        LDA #&C2
        STA &B7
 .L9476 TYA
+}
 .RTS9
 .L9477 RTS
 ;;
@@ -5093,8 +5104,8 @@ ENDIF
        LDY #&16
 .chunk_17_loop
        LDA (&B6),Y
-       STA &C21B,X
-       STA &C2FE,Y
+       STA abs_workspace_some_sector_num-&16,X
+       STA abs_workspace_current_directory_sector_num-&16,Y
        INY
        DEX
        BPL chunk_17_loop
