@@ -3554,9 +3554,11 @@ ENDIF
        BNE L9522
 .L9543 JMP print_cr        ;; Print newline
 ;;
+.command_dir
+{
 .L9546 JSR L9486
        LDY #&09
-.L954B JSR LA4EB
+       JSR LA4EB
        LDA abs_workspace_saved_current_drive
        CMP #&FF
        BNE L955E
@@ -3569,6 +3571,7 @@ ENDIF
        BPL L9563
        JSR chunk_10
        JMP get_fsm_and_root_from_0_if_context_not_minus_1
+}
 ;;
 .L9577 LDA #&FF
        LDY #&00
@@ -5057,7 +5060,7 @@ ENDIF
        EQUS "COMPACT", top_bit+&50, <LA2B6, >LA2B6
        EQUS "COPY", top_bit+&13, <LA849, >LA849
        EQUS "DESTROY", top_bit+&10, <L99E9, >L99E9
-       EQUS "DIR", top_bit+&20, <L9546, >L9546
+       EQUS "DIR", top_bit+&20, <command_dir, >command_dir
        EQUS "DISMOUNT", top_bit+&40, <LA151, >LA151
        EQUS "FREE", top_bit+&00, <LA063, >LA063
        EQUS "LCAT", top_bit+&00, <LA4BD, >LA4BD
@@ -5764,7 +5767,7 @@ ENDIF
        STA &B4
        LDA #>zero_byte
        STA &B5          
-       JSR L9546        ;; Do something
+       JSR command_dir ;; Do something - *DIR with no argument
 .LA1B9 LDA abs_workspace_previous_drive        ;; Get previous drive
 {
        CMP abs_workspace_current_drive2        ;; Compare with ???
