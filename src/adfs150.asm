@@ -3557,8 +3557,7 @@ ENDIF
 .command_dir
 {
 .L9546 JSR L9486
-       LDY #&09
-       JSR LA4EB
+       JSR ldy_9_then_la4eb
        LDA abs_workspace_saved_current_drive
        CMP #&FF
        BNE L955E
@@ -6126,11 +6125,14 @@ ENDIF
        DEY
        BPL LA4D7
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
+.ldy_9_then_la4eb
+{
        LDY #&09
 .LA4EB LDA &C8CC,Y
        STA &C300,Y
        DEY
        BPL LA4EB
+}
 .RTS24
        RTS
 ;;
