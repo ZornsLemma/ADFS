@@ -105,15 +105,15 @@ abs_workspace_something_else = &C30A ;; 10 bytes
        ;; TODO: We seem to have at least two things which are the current
        ;; directory sector number: abs_workspace_current_directory2_sector_num
        ;; and abs_workspace_current_directory_sector_num
-       abs_workspace_current_directory2_sector_num = &C22C ;; 3 bytes
+       abs_workspace_current_directory2_sector_num = &C22C ;; 3 bytes, 4 bytes with the following drive number byte
        abs_workspace_saved_current_drive = &C22F
        abs_workspace_some_sector_num = &C231 ;; 3 bytes
        abs_workspace_another_sector_num = &C234 ;; 3 bytes
-       abs_workspace_current_directory_sector_num = &C314 ;; 3 bytes
+       abs_workspace_current_directory_sector_num = &C314 ;; 3 bytes, 4 bytes with the following drive number byte
        abs_workspace_current_drive = &C317 ;; &FF=no current drive, otherwise top 3 bits are drive number
        abs_workspace_library_directory = &C318 ;; 3 bytes (sector number); &C31A (high byte)=&FF->no library directory
        abs_workspace_library_drive = &C31B
-       abs_workspace_previous_directory = &C31C ;; 3 bytes (sector number); &C31E (high byte)=&FF->no previous directory
+       abs_workspace_previous_directory = &C31C ;; 3 bytes (sector number); &C31E (high byte)=&FF->no previous directory, 4 bytes with the following drive number byte
        abs_workspace_previous_drive = &C31F ;; &FF=no previous drive
 ;; I think &C22C-&C237 is the 'current context' and &C314-&C31F is the 'backup context'
 context_size = &C
@@ -5054,8 +5054,8 @@ ENDIF
 ;; where arg1type/arg2type are suitable for passing to print_argument_table_entry
 ;;
 .L9F2D EQUS "ACCESS", top_bit+&16, <L9942, >L9942
-       EQUS "BACK", top_bit+&00, <LA4D5, >LA4D5
-       EQUS "BYE", top_bit+&00, <bye, >bye
+       EQUS "BACK", top_bit+&00, <command_back, >command_back
+       EQUS "BYE", top_bit+&00, <command_bye, >command_bye
        EQUS "CDIR", top_bit+&20, <L9577, >L9577
        EQUS "COMPACT", top_bit+&50, <LA2B6, >LA2B6
        EQUS "COPY", top_bit+&13, <LA849, >LA849
@@ -5638,7 +5638,7 @@ ENDIF
 ;;
 ;; *BYE
 ;; ====
-.bye
+.command_bye
 .LA103 
        LDA abs_workspace_current_drive        ;; Get current drive
        PHA              ;; Save current drive
@@ -6118,14 +6118,18 @@ ENDIF
        BPL LA4A0
        BMI LA49B
 ;;
-.LA4D5 LDY #&03
-.LA4D7 LDA abs_workspace_previous_directory,Y ;; note abs_workspace_previous_directory+3==abs_workspace_previous_drive
+.command_back
+{
+.LA4D5 LDY #&03 ;; copy 4 bytes, i.e. copy the drive byte as well as the sector number
+.loop  LDA abs_workspace_previous_directory,Y ;; note abs_workspace_previous_directory+3==abs_workspace_previous_drive
        STA abs_workspace_current_directory2_sector_num,Y
-       LDA &C314,Y
+       LDA abs_workspace_current_directory_sector_num,Y
        STA abs_workspace_previous_directory,Y
        DEY
-       BPL LA4D7
+       BPL loop
+       ;; TODO: The '0' in the name of get_fsm_and_root_from_0_if_context_not_minus_1 must be wrong, because that would imply *BACK always switched to drive 0
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
+}
 .copy_current_directory_name_to_abs_workspace_something
 {
        LDY #max_filename_len-1
