@@ -91,8 +91,8 @@ abs_workspace_time = &C2C3 ;; 5 bytes
 abs_workspace_time_delta = &C2C8 ;; 5 bytes
 abs_workspace_screen_flag = &C2D7 ;; 0 or a stored copy of ACCCON
 abs_workspace_cmos_byte_copy = &C2D8
-abs_workspace_something = &C300
-abs_workspace_something_else = &C30A
+abs_workspace_something = &C300 ;; 10 bytes
+abs_workspace_something_else = &C30A ;; 10 bytes
 
 ;; init_context_ffffffff implies the 'context' lives at &C22C-&C237 inclusive
 ;; and &C314-&C31F inclusive. So these are part of the context:
@@ -133,6 +133,7 @@ abs_workspace_current_directory_s1 = &C500
 abs_workspace_current_directory_s2 = &C600
 abs_workspace_current_directory_s3 = &C700
 abs_workspace_current_directory_s4 = &C800
+       abs_workspace_current_directory_name = &C8CC
 abs_workspace_park = &C900
 
 ;; A directory consists of 5 sectors, containing a 5 byte header, 47 26-byte entries, then some
@@ -3557,7 +3558,7 @@ ENDIF
 .command_dir
 {
 .L9546 JSR L9486
-       JSR ldy_9_then_la4eb
+       JSR copy_current_directory_name_to_abs_workspace_something
        LDA abs_workspace_saved_current_drive
        CMP #&FF
        BNE L955E
@@ -6098,7 +6099,7 @@ ENDIF
 ;;
 .LA482 JSR L9486
        LDY #&09
-.LA487 LDA &C8CC,Y
+.LA487 LDA abs_workspace_current_directory_name,Y
        STA &C30A,Y
        DEY
        BPL LA487
@@ -6125,11 +6126,11 @@ ENDIF
        DEY
        BPL LA4D7
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
-.ldy_9_then_la4eb
+.copy_current_directory_name_to_abs_workspace_something
 {
-       LDY #&09
-.LA4EB LDA &C8CC,Y
-       STA &C300,Y
+       LDY #max_filename_len-1
+.LA4EB LDA abs_workspace_current_directory_name,Y
+       STA abs_workspace_something,Y
        DEY
        BPL LA4EB
 }
@@ -6315,7 +6316,7 @@ ENDIF
        JSR L9486
        LDY #&09
 .loop1 LDA &C274,Y
-       STA &C8CC,Y
+       STA abs_workspace_current_directory_name,Y
        DEY
        BPL loop1
        LDY #&02
