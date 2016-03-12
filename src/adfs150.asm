@@ -127,6 +127,11 @@ abs_workspace_drive_disc_ids = &C321 ;; 16 bytes
        ;; ...
        ;; 2 bytes containing disc ID for drive 7
 
+num_channels = 10
+abs_workspace_channel_flags = &C3AC ;; 10 bytes
+abs_workspace_channel_drives = &C3B6 ;; 10 bytes - top 3 bits of each is drive num TODO: low bits may have some significance too
+first_os_channel_number = &30 ;; ADFS file opens return OS channel numbers &30-&39
+
 abs_workspace_current_directory = &C400 ;; 5*256 bytes
 abs_workspace_current_directory_s0 = &C400
 abs_workspace_current_directory_s1 = &C500
@@ -2511,7 +2516,7 @@ ENDIF
        JMP L95AB
 ;;
 .L8D2C LDX #&09
-.L8D2E LDA &C3AC,X
+.L8D2E LDA abs_workspace_channel_flags,X
        BEQ L8D74
        JSR chunk_53
        BNE L8D74
@@ -4622,7 +4627,7 @@ ENDIF
        EQUW LAD72:EQUB &FF    ;; OSBGET
        EQUW LB0EC:EQUB &FF    ;; OSBPUT
        EQUW LB5CB:EQUB &FF    ;; OSGBPB
-       EQUW LB213:EQUB &FF    ;; OSFIND
+       EQUW our_osfind:EQUB &FF    ;; OSFIND
        EQUW L9E9D:EQUB &FF    ;; FSCV
 ;;
 ;;
@@ -5061,7 +5066,7 @@ ENDIF
        EQUS "COPY", top_bit+&13, <LA849, >LA849
        EQUS "DESTROY", top_bit+&10, <L99E9, >L99E9
        EQUS "DIR", top_bit+&20, <command_dir, >command_dir
-       EQUS "DISMOUNT", top_bit+&40, <LA151, >LA151
+       EQUS "DISMOUNT", top_bit+&40, <command_dismount, >command_dismount
        EQUS "FREE", top_bit+&00, <LA063, >LA063
        EQUS "LCAT", top_bit+&00, <LA4BD, >LA4BD
        EQUS "LEX", top_bit+&00, <LA4C9, >LA4C9
@@ -5129,7 +5134,7 @@ ENDIF
        RTS
 
 .chunk_8
-       LDA &C3B6,X
+       LDA abs_workspace_channel_drives,X
        AND #&E0
        CMP abs_workspace_current_drive
        RTS
@@ -5331,7 +5336,7 @@ ENDIF
 
 .chunk_49
        STA &C297
-       LDA &C3B6,X
+       LDA abs_workspace_channel_drives,X
        RTS
 
 .chunk_51
@@ -5704,31 +5709,37 @@ ENDIF
 .LA150 RTS
 }
 ;;
+;; *DISMOUNT
+.command_dismount
+{
 .LA151 JSR process_drive_argument_default_to_current_or_0
-       LDX #&09
-.LA156 LDA &C3AC,X
-       BEQ LA16F
-       LDA &C3B6,X
-       AND #&E0
+       LDX #num_channels-1
+.channel_loop
+       LDA abs_workspace_channel_flags,X
+       BEQ channel_done ;; channel not open, so nothing to do 
+       LDA abs_workspace_channel_drives,X
+       AND #&E0		    ;; mask off non-drive-number bits
        CMP abs_workspace_current_drive2
-       BNE LA16F
+       BNE channel_done ;; channel not on this drive, so nothing to do
        CLC
        TXA
-       ADC #&30
+       ADC #first_os_channel_number
        TAY
-       LDA #&00
-       JSR LB213
-.LA16F DEX
-       BPL LA156
+       LDA #&00	        ;; OSFIND close
+       JSR our_osfind
+.channel_done
+       DEX
+       BPL channel_loop
        LDA abs_workspace_current_drive
        CMP abs_workspace_current_drive2
-       BNE LA1B9
+       BNE unset_previous_dir_and_library_if_on_current_drive
        LDA #&FF
        STA abs_workspace_current_drive
        STA abs_workspace_current_directory_sector_num+2
        LDX #&00
        JSR set_unset_c300_x
-       BRA LA1B9
+       BRA unset_previous_dir_and_library_if_on_current_drive
+}
 ;;
 ;; TODO: Copies the 8 bytes at LA196 (in reverse order) *plus* the preceding RTS
 ;; (&60) and the offset of the preceding BPL (not checked value) to &C300,X 
@@ -5768,8 +5779,12 @@ ENDIF
        LDA #>zero_byte
        STA &B5          
        JSR command_dir ;; Do something - *DIR with no argument
-.LA1B9 LDA abs_workspace_previous_drive        ;; Get previous drive
+;; The following code clears the library and previous directory if they are
+;; on this drive; this prevents (for example) *BACK doing something
+;; strange after a *MOUNT or *DISMOUNT.
+.unset_previous_dir_and_library_if_on_current_drive
 {
+.LA1B9 LDA abs_workspace_previous_drive        ;; Get previous drive
        CMP abs_workspace_current_drive2        ;; Compare with ???
        BNE drive_different ;; If different, jump past
        LDA #&FF
@@ -6042,7 +6057,7 @@ ENDIF
        LDX zp_dir_ptr
        LDY zp_dir_ptr+1
        LDA #&40
-       JSR LB213
+       JSR our_osfind
        STA &C332
        LDX #<L9A9C         ;; Point to E.-ADFS-$.!BOOT
        LDY #>L9A9C
@@ -6736,7 +6751,7 @@ ENDIF
 ;; ----------------------
 .LA9DA DEX
        BNE LAA59        ;; Jump if not 1, not PTR=
-       LDA &C3AC,Y
+       LDA abs_workspace_channel_flags,Y
        BPL LAA16
 
       
@@ -6797,7 +6812,7 @@ ENDIF
 .LAA75 DEX
        BNE LAAB9
        LDX &C3
-       LDA &C3AC,Y
+       LDA abs_workspace_channel_flags,Y
        BMI LAA82
        JMP LB0FA
 ;;
@@ -7224,7 +7239,7 @@ ENDIF
        BCC LACF8        ;; Too low - error
        STA &CF          ;; Store channel offset
        TAX
-       LDA &C3AC,X      ;; Get channel flags
+       LDA abs_workspace_channel_flags,X      ;; Get channel flags
        BEQ LACF8        ;; Channel not open - error
 .LAD24 RTS
 ;;
@@ -7271,9 +7286,9 @@ ENDIF
 .LAD5F LDY &B5
        RTS
 ;;
-.LAD62 LDA &C3AC,X
+.LAD62 LDA abs_workspace_channel_flags,X
        AND #&C8
-       STA &C3AC,X
+       STA abs_workspace_channel_flags,X
        JSR generate_error_inline        ;; Generate an error
        EQUB &DF         ;; ERR=150
        EQUS "EOF"
@@ -7292,10 +7307,10 @@ ENDIF
        BNE LAD62        ;; Not same, so generate 'EOF' error
        JSR LA77F        ;; Check various checksums
        LDX &CF          ;; Get offset to channel
-       LDA &C3AC,X      ;; Get channel flag
+       LDA abs_workspace_channel_flags,X      ;; Get channel flag
        AND #&C0
        ORA #&08         ;; Set EOF flag
-       STA &C3AC,X
+       STA abs_workspace_channel_flags,X
        LDY &C2          ;; Restore Y
        LDX &C3          ;; Restore X
        SEC              ;; Flag EOF
@@ -7328,7 +7343,7 @@ ENDIF
        LDA abs_workspace_current_drive
        STA &C233
        LDX &CF
-       LDA &C3B6,X
+       LDA abs_workspace_channel_drives,X
        AND #&E0
        STA abs_workspace_saved_current_drive
        LDA &C3E8,X
@@ -7348,7 +7363,7 @@ ENDIF
        STA abs_workspace_another_sector_num
        LDA &C3C0,X
        STA abs_workspace_another_sector_num+1
-       LDA &C3B6,X
+       LDA abs_workspace_channel_drives,X
        AND #&1F
        STA abs_workspace_another_sector_num+2
        LDA #&05
@@ -7358,7 +7373,7 @@ ENDIF
        LDX &CF
 .LAE38 LDA (&B8)
        BNE LAE44
-       STA &C3AC,X
+       STA abs_workspace_channel_flags,X
        JMP LA76E
 ;;
 .LAE44 LDY #&19
@@ -7515,7 +7530,7 @@ ENDIF
        INY
        STA (&B8),Y
        ORA abs_workspace_current_drive
-       STA &C3B6,X
+       STA abs_workspace_channel_drives,X
        JSR L8F91
        LDA #as_something
        TRB zp_adfs_status_flag
@@ -7552,7 +7567,7 @@ ENDIF
        ADC &C3C0,X
        STA &C297
        LDA &C334,X
-       ADC &C3B6,X
+       ADC abs_workspace_channel_drives,X
        STA &C298
        LDA #&C0
        JSR LABE7
@@ -7570,7 +7585,7 @@ ENDIF
        ADC &C3C0,X
        STA abs_workspace_another_sector_num+1
        LDA &C29D
-       ADC &C3B6,X
+       ADC abs_workspace_channel_drives,X
        STA abs_workspace_another_sector_num+2
        LDA &C29A
        BNE LB04F
@@ -7657,7 +7672,7 @@ ENDIF
        EQUS "Not open for update"
        EQUB &00
 ;;
-.LB112 LDA &C3AC,X
+.LB112 LDA abs_workspace_channel_flags,X
        AND #&07
        CMP #&06
        BCS LB14D
@@ -7740,11 +7755,11 @@ ENDIF
        ORA #&03
 .LB1E1 BMI LB1E5
        AND #&F9
-.LB1E5 STA &C3AC,X
+.LB1E5 STA abs_workspace_channel_flags,X
        RTS
 ;;
 .LB1E9 LDX &CF          ;; Get channel offset
-       LDA &C3AC,X
+       LDA abs_workspace_channel_flags,X
        PHA
        AND #&04
        BEQ LB20B
@@ -7765,6 +7780,8 @@ ENDIF
 ;;
 ;; OSFIND - Open a file or close a channel
 ;; =======================================
+.our_osfind
+{
 .LB213 JSR LA77F        ;; Check checksums
        STX &C240
        STX &B4
@@ -7777,6 +7794,7 @@ ENDIF
        TAY              ;; Zero A and Y
        BNE LB231        ;; Jump ahead for open
        JMP LB3E0        ;; Jump to close
+}
 ;;
 ;; OPEN
 ;; ----
@@ -7789,7 +7807,7 @@ ENDIF
 ;; Open a file
 ;; -----------
 .LB23E LDX #&09         ;; Look for a spare channel
-.LB240 LDA &C3AC,X      ;; Check channel flags
+.LB240 LDA abs_workspace_channel_flags,X      ;; Check channel flags
        BEQ LB260        ;; Found a spare channel
        DEX              ;; Loop to next channel
        BPL LB240        ;; Keep going until run out of channels
@@ -7812,7 +7830,7 @@ ENDIF
        JMP LB336
 ;;
 .LB275 LDX #&09
-.LB277 LDA &C3AC,X
+.LB277 LDA abs_workspace_channel_flags,X
        BPL LB2AA
        JSR chunk_53
        BNE LB2AA
@@ -7859,7 +7877,7 @@ ENDIF
        INY
        LDA (zp_dir_ptr),Y
        ORA abs_workspace_current_drive
-       STA &C3B6,X
+       STA abs_workspace_channel_drives,X
        INY
        LDA (zp_dir_ptr),Y
        STA &C3F2,X
@@ -7874,7 +7892,7 @@ ENDIF
        STZ &C366,X
        STZ &C35C,X
        LDA &C2A0
-       STA &C3AC,X
+       STA abs_workspace_channel_flags,X
        TXA
        CLC
        ADC #&30
@@ -7962,7 +7980,7 @@ ENDIF
 .LB3E0 LDY &C4          ;; Get handle
        BNE LB406        ;; Nonzero, close just this channel
        LDX #&09         ;; Loop for all channels
-.LB3E6 LDA &C3AC,X      ;; Get channel flag
+.LB3E6 LDA abs_workspace_channel_flags,X      ;; Get channel flag
        BNE LB3F7        ;; Jump to close this channel
 .LB3EB DEX              ;; Loop for all channels
        BPL LB3E6
@@ -7987,8 +8005,8 @@ ENDIF
 ;; -----------------------------
 .LB406 JSR LAD0D        ;; Check channel and get flags
 .LB409 JSR LB1E9        ;; Check something and set flags
-       LDY &C3AC,X      ;; Get flags
-       STZ &C3AC,X      ;; Clear flags
+       LDY abs_workspace_channel_flags,X      ;; Get flags
+       STZ abs_workspace_channel_flags,X      ;; Clear flags
        TYA              ;; Pass flags to A
        BPL LB435        ;; Jump ahead if b7=0
        LDA &C352,X
@@ -8057,7 +8075,7 @@ ENDIF
        BRA LB435        ;; Jump back to write buffer?
 ;;
 .LB4B9 LDX #&09
-.LB4BB LDA &C3AC,X
+.LB4BB LDA abs_workspace_channel_flags,X
        BEQ LB4CA
        JSR chunk_8
        BEQ LB4DF
@@ -8228,7 +8246,7 @@ ENDIF
        PHP
        JSR LB1E9
        LDX &CF
-       LDA &C3B6,X
+       LDA abs_workspace_channel_drives,X
        JSR LB56C
        PLP
        BMI LB614
@@ -8435,7 +8453,7 @@ ENDIF
        LDA &C3C0,X
        ADC &CA
        STA &C21C
-       LDA &C3B6,X
+       LDA abs_workspace_channel_drives,X
        ADC &CB
        STA &C21B
        LDY #&04
