@@ -1945,7 +1945,7 @@ ENDIF
        RTS
 ;;
 .L8930 LDX #&01
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        BPL L8939
        INX
 .L8939 STX &C2C0
@@ -1967,23 +1967,31 @@ ENDIF
        BNE L8941
 .L8953 STY abs_workspace_some_other_sector_num
 .L8956 
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        BMI L897B
-       JSR L8964
+       JSR get_next_directory_entry
        BEQ L8956
+.lda_ff_rts
 .L8961 LDA #&FF
        RTS
 ;;
-.L8964
+;; Advance zp_dir_ptr by the size of a directory entry. If there are no more
+;; directory entries, return with A=&FF/Z clear/N set. If there is another
+;; entry, it calls L8756 which I *think* will populate abs_workspace_filename
+;; with the filename. Our return value will depend on the result of L8756. I
+;; think the key thing for our caller is not the value of A or N, it is whether Z is set or
+;; clear.
+.get_next_directory_entry
 {
+.L8964
        JSR advance_zp_dir_ptr_low_by_dir_entry_size
        BCC L896F
        INC zp_dir_ptr+1
 .L896F 
        JSR ldy_0_lda_zp_dir_ptr_y
-       BEQ L8961
+       BEQ lda_ff_rts ;; there's a zero byte after the last directory entry
        JSR L8756
-       BNE L8964
+       BNE get_next_directory_entry
        RTS
 }
 ;;
@@ -2279,17 +2287,17 @@ ENDIF
 .L8BBE JSR get_directory_given_name
        BEQ L8BCA
        RTS
-.L8BC5 JSR L8964
+.L8BC5 JSR get_next_directory_entry
        BNE L8BD2
 .L8BCA 
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        BMI L8BC5
 .L8BD0 LDA #&00
 .L8BD2 RTS
 ;;
 .fsc_10_info_file_found
 .L94F6 JSR L9508        ;; Call ...
-       JSR L8964
+       JSR get_next_directory_entry
        BEQ L94F6
        JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
@@ -2497,7 +2505,7 @@ ENDIF
        RTS
 ;;
 .L8D12 
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        BPL L8D1B
        JMP L95AB
 ;;
@@ -2991,7 +2999,7 @@ IF PATCH_FULL_ACCESS
         DEY
         BPL WrLp
 ELSE
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        BPL L90F2        ;; Jump if a file
        LSR &C22B
        LSR &C22B
@@ -3038,7 +3046,7 @@ ENDIF
 .check_for_dir_not_empty
 {
 .L9131 JSR L8D1B
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        BPL check_for_cant_delete_csd
        LDY #&03
 .L913C LDA abs_workspace_current_directory2_sector_num,Y
@@ -3063,7 +3071,7 @@ ENDIF
 {
 .L9177 
        JSR chunk_30
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        BPL L921B
        LDX abs_workspace_saved_current_drive
        CPX #&FF
@@ -3438,21 +3446,23 @@ ENDIF
 ;;
 .L9478 
        jsr ldy_0_lda_b4_y
-       CMP #&21
+       CMP #'!'		    ;; first non-space ASCII character
        BCS L9486
        JSR set_z_iff_no_current_drive
-       BNE L9477
+       BNE RTS9		    ;; return if there's a current drive
 .L9486 JSR get_directory_given_name2
+{
        BNE L9499
 .L948B 
-       JSR ldy_3_lda_zp_dir_ptr_y
-       BMI L949E
-       JSR L8964
+       JSR set_n_iff_directory_entry_is_directory
+       BMI is_directory
+       JSR get_next_directory_entry
        BEQ L948B
 .L9496 JMP error_not_found ;; Not Found error
 ;;
 .L9499 JSR update_zp_dir_ptr_to_point_to_something_based_on_b4_y_and_tya
        BNE L9496
+.is_directory
 .L949E LDY abs_workspace_current_directory2_sector_num+2
        INY
        JSR chunk_17
@@ -3460,6 +3470,7 @@ ENDIF
        CMP #&94
        BEQ RTS9
        JMP scsi_op_using_abs_workspace_control_block
+}
 ;;
 ;; Fake entry for '$'
 ;; ==================
@@ -3640,7 +3651,10 @@ ENDIF
        EQUB &FF
 ;;
 
-.ldy_3_lda_zp_dir_ptr_y
+;; The access bits of a directory entry are held in bit 7 of bytes 0-9 of the
+;; name. Byte 3's top bit contains the 'D' flag, which indicates if the object
+;; is a directory or not.
+.set_n_iff_directory_entry_is_directory
        LDY #&03
        LDA (zp_dir_ptr),Y
 .RTS10
@@ -3938,7 +3952,7 @@ ENDIF
 .L98E2 
        JSR ldy_0_lda_zp_dir_ptr_y
        BEQ L9913
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        BPL L9930
        LDA &C0
        CMP #&FE
@@ -4054,7 +4068,7 @@ ENDIF
 .L99BD INY
        BNE L998D
 .L99C0 JSR L9501
-       JSR L8964
+       JSR get_next_directory_entry
        BEQ L9956
        JSR L8F91
        JMP get_fsm_and_root_from_0_if_context_not_minus_1
@@ -4538,9 +4552,9 @@ ENDIF
        JSR L8FE8
        BNE L9C7A
 .L9C4E 
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        BMI L9C5B
-       JSR L8964
+       JSR get_next_directory_entry
        BNE L9C7A
        BEQ L9C4E
 .L9C5B LDX #&02
@@ -6193,7 +6207,7 @@ ENDIF
        JMP error_file_not_found_or_bad_name
 ;;
 .LA555 
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        JSR get_fsm_and_root_from_0_if_context_not_minus_1
        BPL LA580
        PLX
@@ -6282,7 +6296,7 @@ ENDIF
 {
        JSR L8F91
 .LA6BB 
-       JSR ldy_3_lda_zp_dir_ptr_y
+       JSR set_n_iff_directory_entry_is_directory
        BPL chunk_66_exit
 ;;
        LDY #&02
@@ -6571,7 +6585,7 @@ ENDIF
        BPL LA8BF
        JMP acknowledge_escape
 ;;
-.LA8BF JSR L8964
+.LA8BF JSR get_next_directory_entry
        BEQ LA8AF
        JMP get_fsm_and_root_from_0_if_context_not_minus_1
 ;;
